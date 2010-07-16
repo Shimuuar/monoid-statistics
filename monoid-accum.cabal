@@ -1,0 +1,22 @@
+Name:           monoid-accum
+Version:        0.1
+Cabal-Version:  >= 1.6
+License:        BSD3
+License-File:   LICENSE
+Author:         Alexey Khudyakov <alexey.skladnoy@gmail.com>
+Maintainer:     Alexey Khudyakov <alexey.skladnoy@gmail.com>
+Homepage:       
+Category:       Data
+Build-Type:     Simple
+Synopsis:       
+  Type class for monoidal accumulators
+Description:
+  .
+
+source-repository head
+  type:     hg
+  location: http://bitbucket.org/Shimuuar/monoid-accum
+
+Library
+  Build-Depends:   base >=3 && <5
+  Exposed-modules: Data.Monoid.Accum
