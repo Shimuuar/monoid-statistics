@@ -6,10 +6,10 @@ License-File:   LICENSE
 Author:         Alexey Khudyakov <alexey.skladnoy@gmail.com>
 Maintainer:     Alexey Khudyakov <alexey.skladnoy@gmail.com>
 Homepage:       
-Category:       Data
+Category:       Statistics
 Build-Type:     Simple
 Synopsis:       
-  Type class for monoidal accumulators
+  Monoids for calculation of statistics of sample
 Description:
   .
 
