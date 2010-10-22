@@ -5,17 +5,20 @@ License:        BSD3
 License-File:   LICENSE
 Author:         Alexey Khudyakov <alexey.skladnoy@gmail.com>
 Maintainer:     Alexey Khudyakov <alexey.skladnoy@gmail.com>
-Homepage:       
+Homepage:       https://bitbucket.org/Shimuuar/monoid-statistics
 Category:       Statistics
 Build-Type:     Simple
 Synopsis:       
   Monoids for calculation of statistics of sample
 Description:
-  
+  Monoids for calculation of statistics of sample
+  .
+  Currently only simplest statistics could be calculated
+
 
 source-repository head
   type:     hg
-  location: https://bitbucket.org/Shimuuar/monoid-statistics
+  location: http://bitbucket.org/Shimuuar/monoid-statistics
 
 Library
   Build-Depends:   base >=3 && <5
