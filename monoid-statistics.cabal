@@ -11,11 +11,11 @@ Build-Type:     Simple
 Synopsis:       
   Monoids for calculation of statistics of sample
 Description:
-  .
+  
 
 source-repository head
   type:     hg
-  location: http://bitbucket.org/Shimuuar/monoid-accum
+  location: https://bitbucket.org/Shimuuar/monoid-statistics
 
 Library
   Build-Depends:   base >=3 && <5
