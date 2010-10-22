@@ -13,7 +13,7 @@ Synopsis:
 Description:
   Monoids for calculation of statistics of sample
   .
-  Currently only simplest statistics could be calculated
+  Currently only mean and number of elements could be calculated
 
 
 source-repository head
