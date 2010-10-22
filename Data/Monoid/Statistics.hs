@@ -68,7 +68,8 @@ instance (Integral a) => StatMonoid (Count a) b where
   
   
   
--- | Mean of sample. Samples of 
+-- | Mean of sample. Samples of Double,Float and bui;t-in integral
+--   types are supported
 --
 -- Numeric stability of 'mappend' is not proven.
 data Mean = Mean { calcMean      :: Double -- ^ Current mean
