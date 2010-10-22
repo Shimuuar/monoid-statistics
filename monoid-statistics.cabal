@@ -1,4 +1,4 @@
-Name:           monoid-accum
+Name:           monoid-statistics
 Version:        0.1
 Cabal-Version:  >= 1.6
 License:        BSD3
@@ -19,4 +19,4 @@ source-repository head
 
 Library
   Build-Depends:   base >=3 && <5
-  Exposed-modules: Data.Monoid.Accum
+  Exposed-modules: Data.Monoid.Statistics

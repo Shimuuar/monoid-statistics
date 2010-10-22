@@ -1,7 +1,7 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE FlexibleInstances #-}
-module Data.Monoid.Accum ( PointedMonoid(..)
-                         ) where
+{-# LANGUAGE FlexibleInstances     #-}
+module Data.Monoid.Statistics ( PointedMonoid(..)
+                              ) where
 
 import Data.Monoid
 
