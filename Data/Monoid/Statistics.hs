@@ -28,18 +28,19 @@ import GHC.Float (float2Double)
 -- | Monoid which corresponds to some stattics. In order to do so it
 --   must be commutative. In many cases it's not practical to
 --   construct monoids for each element so 'papennd' was added.
---
 --   First parameter of type class is monoidal accumulator. Second is
 --   type of element over which statistic is calculated. 
 --
 --   Statistic could be calculated with fold over sample. Since
 --   accumulator is 'Monoid' such fold could be easily parralelized.
+--
+--   Instance must satisfy following law:
+--
+--   > pappend x (pappend y mempty) == pappend x mempty `mappend` pappend y mempty
+--   > mappend x y = mappend y x
 class Monoid m => StatMonoid m a where
   -- | Add one element to monoid accumulator. P stands for point in
   --   analogy for Pointed.
-  -- 
-  -- Must satisfy.
-  -- > pappend x (pappend y mempty) == pappend x mempty `mappend` pappend y mempty
   pappend :: a -> m -> m
 
 -- | Calculate statistic over 'Foldable'. It's implemented in terms of
