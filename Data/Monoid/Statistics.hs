@@ -37,7 +37,7 @@ import GHC.Float (float2Double)
 --   Instance must satisfy following law:
 --
 --   > pappend x (pappend y mempty) == pappend x mempty `mappend` pappend y mempty
---   > mappend x y = mappend y x
+--   > mappend x y == mappend y x
 class Monoid m => StatMonoid m a where
   -- | Add one element to monoid accumulator. P stands for point in
   --   analogy for Pointed.
