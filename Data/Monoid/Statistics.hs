@@ -10,6 +10,7 @@
 -- 
 module Data.Monoid.Statistics ( StatMonoid(..)
                               , evalStatistic
+                              , ConvertibleToDouble(..)
                                 -- * Statistic monoids
                               , Count(..)
                               , Mean(..)
@@ -52,6 +53,58 @@ evalStatistic = F.foldl' (flip pappend) mempty
 
 
 ----------------------------------------------------------------
+-- Conversion to Double
+----------------------------------------------------------------
+
+-- | Data type which could be convered to Double
+class ConvertibleToDouble a where
+  toDouble :: a -> Double
+  
+-- Floating point
+instance ConvertibleToDouble Double where
+  toDouble = id
+  {-# INLINE toDouble #-}
+instance ConvertibleToDouble Float where
+  toDouble = float2Double
+  {-# INLINE toDouble #-}
+-- Basic integral types
+instance ConvertibleToDouble Integer where
+  toDouble = fromIntegral
+  {-# INLINE toDouble #-}
+instance ConvertibleToDouble Int where
+  toDouble = fromIntegral
+  {-# INLINE toDouble #-}
+instance ConvertibleToDouble Word where
+  toDouble = fromIntegral
+  {-# INLINE toDouble #-}
+-- Integral types with fixed size
+instance ConvertibleToDouble Int8 where
+  toDouble = fromIntegral
+  {-# INLINE toDouble #-}
+instance ConvertibleToDouble Int16 where
+  toDouble = fromIntegral
+  {-# INLINE toDouble #-}
+instance ConvertibleToDouble Int32 where
+  toDouble = fromIntegral
+  {-# INLINE toDouble #-}
+instance ConvertibleToDouble Int64 where
+  toDouble = fromIntegral
+  {-# INLINE toDouble #-}
+instance ConvertibleToDouble Word8 where
+  toDouble = fromIntegral
+  {-# INLINE toDouble #-}
+instance ConvertibleToDouble Word16 where
+  toDouble = fromIntegral
+  {-# INLINE toDouble #-}
+instance ConvertibleToDouble Word32 where
+  toDouble = fromIntegral
+  {-# INLINE toDouble #-}
+instance ConvertibleToDouble Word64 where
+  toDouble = fromIntegral
+  {-# INLINE toDouble #-}
+
+
+----------------------------------------------------------------
 -- Data types
 ----------------------------------------------------------------
 
@@ -89,56 +142,8 @@ instance Monoid Mean where
   {-# INLINE mempty  #-}
   {-# INLINE mappend #-}
 
--- Add one sample elemnt to Mean
-addValueToMean :: (a -> Double) -> a -> Mean -> Mean
-addValueToMean f !x !(Mean m n) = Mean (m + (f x - m) / fromIntegral n') n' where n' = n+1
-{-# INLINE addValueToMean #-}
-
--- Floating point
-instance StatMonoid Mean Double where
-  pappend = addValueToMean id
-  {-# INLINE pappend #-}
-instance StatMonoid Mean Float where
-  pappend = addValueToMean float2Double
-  {-# INLINE pappend #-}
-
--- Basic integrals
-instance StatMonoid Mean Integer where
-  pappend = addValueToMean fromIntegral
-  {-# INLINE pappend #-}
-instance StatMonoid Mean Int where
-  pappend = addValueToMean fromIntegral
-  {-# INLINE pappend #-}
-instance StatMonoid Mean Word where
-  pappend = addValueToMean fromIntegral
-  {-# INLINE pappend #-}
-
--- Fixed size ints
-instance StatMonoid Mean Int8 where
-  pappend = addValueToMean fromIntegral
-  {-# INLINE pappend #-}
-instance StatMonoid Mean Int16 where
-  pappend = addValueToMean fromIntegral
-  {-# INLINE pappend #-}
-instance StatMonoid Mean Int32 where
-  pappend = addValueToMean fromIntegral
-  {-# INLINE pappend #-}
-instance StatMonoid Mean Int64 where
-  pappend = addValueToMean fromIntegral
-  {-# INLINE pappend #-}
-
--- Fixed size Words
-instance StatMonoid Mean Word8 where
-  pappend = addValueToMean fromIntegral
-  {-# INLINE pappend #-}
-instance StatMonoid Mean Word16 where
-  pappend = addValueToMean fromIntegral
-  {-# INLINE pappend #-}
-instance StatMonoid Mean Word32 where
-  pappend = addValueToMean fromIntegral
-  {-# INLINE pappend #-}
-instance StatMonoid Mean Word64 where
-  pappend = addValueToMean fromIntegral
+instance ConvertibleToDouble a => StatMonoid Mean a where
+  pappend !x !(Mean m n) = Mean (m + (toDouble x - m) / fromIntegral n') n' where n' = n+1
   {-# INLINE pappend #-}
 
 
