@@ -13,6 +13,8 @@ module Data.Monoid.Statistics ( StatMonoid(..)
                                 -- * Statistic monoids
                               , Count(..)
                               , Mean(..)
+                              , Stdev(..)
+                              , stdev, stdev', variance, mean
                                 -- * Additional information
                                 -- $info
                               ) where
@@ -160,6 +162,46 @@ instance (StatMonoid a x, StatMonoid b x) => StatMonoid (TwoStats a b) x where
   pappend !x !(TwoStats a b) = TwoStats (pappend x a) (pappend x b)
   {-# INLINE pappend #-}
 
+
+-- | Intermediate quantities to calculate the standard deviation.
+-- Only samples of 'Double' are supported.
+data Stdev = Stdev { sumOfSquares :: Double  -- ^ Current $\sum_i (x_i)^2$
+                   , sumOfEntries :: Double  -- ^ Current $\sum_i x_i$
+                   , sampleCountStdev :: Int -- ^ Length of the sample.
+                   }
+           deriving Show
+
+-- | Calculate mean of the sample (use 'Mean' if you need only it).
+mean :: Stdev -> Double
+mean !(Stdev sumsq sumxs n) = sumxs / fromIntegral n
+
+-- | Calculate standard deviation of the sample (unbiased estimator, $\sigma$).
+stdev' :: Stdev -> Double
+stdev' !(Stdev sumsq sumxs n) = sqrt $ (sumsq - sumxs ^ 2 / n') / n'
+  where n' = fromIntegral n
+
+-- | Calculate sample standard deviation (biased estimator, $s$).
+stdev :: Stdev -> Double
+stdev = sqrt . variance
+
+-- | Calculate unbiased estimate of the variance.
+variance :: Stdev -> Double
+variance !(Stdev sumsq sumxs n) = (sumsq - sumxs^2 / n') / (n'-1)
+  where n' = fromIntegral n
+
+instance Monoid Stdev where
+  mempty = Stdev 0 0 0
+  mappend !(Stdev sumsq1 sum1 n1) !(Stdev sumsq2 sum2 n2) =
+           Stdev (sumsq1 + sumsq2) (sum1 + sum2) (n1 + n2)
+  {-# INLINE mempty #-}
+  {-# INLINE mappend #-}
+
+stdevOfOne :: Double -> Stdev
+stdevOfOne !x = Stdev (x^2) x 1
+
+instance StatMonoid Stdev Double where
+  pappend !x !(Stdev sumsq sum' n) = Stdev (sumsq + x^2) (sum' + x) (n + 1)
+  {-# INLINE pappend #-}
             
 -- $info
 --
