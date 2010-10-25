@@ -170,9 +170,12 @@ instance (StatMonoid a x, StatMonoid b x) => StatMonoid (TwoStats a b) x where
 
 -- | Intermediate quantities to calculate the standard deviation.
 -- Only samples of 'Double' are supported.
-data Stdev = Stdev { sumOfSquares :: Double  -- ^ Current $\sum_i (x_i)^2$
-                   , sumOfEntries :: Double  -- ^ Current $\sum_i x_i$
-                   , sampleCountStdev :: Int -- ^ Length of the sample.
+data Stdev = Stdev { sumOfSquares :: {-# UNPACK #-} !Double
+                                     -- ^ Current $\sum_i (x_i)^2$.
+                   , sumOfEntries :: {-# UNPACK #-} !Double
+                                     -- ^ Current $\sum_i x_i$.
+                   , sampleCountStdev :: {-# UNPACK #-} !Int
+                                     -- ^ Length of the sample.
                    }
            deriving Show
 
