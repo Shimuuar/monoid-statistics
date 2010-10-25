@@ -200,6 +200,7 @@ stdevOfOne !x = Stdev (x^2) x 1
 
 instance StatMonoid Stdev Double where
   pappend !x !(Stdev sumsq sum' n) = Stdev (sumsq + x^2) (sum' + x) (n + 1)
+  {-# INLINE pappend #-}
             
 -- $info
 --
