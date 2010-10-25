@@ -73,8 +73,8 @@ instance (Integral a) => StatMonoid (Count a) b where
 --   types are supported
 --
 -- Numeric stability of 'mappend' is not proven.
-data Mean = Mean { calcMean      :: Double -- ^ Current mean
-                 , calcCountMean :: Int    -- ^ Number of entries
+data Mean = Mean { calcMean      :: {-# UNPACK #-} !Double -- ^ Current mean
+                 , calcCountMean :: {-# UNPACK #-} !Int    -- ^ Number of entries
                  }
             deriving Show
 
