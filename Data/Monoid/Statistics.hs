@@ -152,8 +152,8 @@ instance ConvertibleToDouble a => StatMonoid Mean a where
 ----------------------------------------------------------------
 
 -- | Monoid which allows to calculate two statistics in parralel
-data TwoStats a b = TwoStats { calcStat1 :: a
-                             , calcStat2 :: b
+data TwoStats a b = TwoStats { calcStat1 :: !a
+                             , calcStat2 :: !b
                              }
 
 instance (Monoid a, Monoid b) => Monoid (TwoStats a b) where
