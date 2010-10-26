@@ -191,7 +191,7 @@ stdev' !s = sqrt $ m2 / n
         m2 = stdev'sumsq s
 
 -- | Calculate sample standard deviation (biased estimator, $s$, where
--- the denominator is $n - 1$).
+-- the denominator is $n-1$).
 stdev :: Stdev -> Double
 stdev = sqrt . variance
 
@@ -205,11 +205,11 @@ variance !s = m2 / (n-1)
 -- | Using parallel algorithm from:
 -- 
 -- Chan, Tony F.; Golub, Gene H.; LeVeque, Randall J. (1979),
--- "Updating Formulae and a Pairwise Algorithm for Computing Sample
--- Variances.", Technical Report STAN-CS-79-773, Department of
+-- Updating Formulae and a Pairwise Algorithm for Computing Sample
+-- Variances., Technical Report STAN-CS-79-773, Department of
 -- Computer Science, Stanford University. Page 4.
 -- 
--- ftp://reports.stanford.edu/pub/cstr/reports/cs/tr/79/773/CS-TR-79-773.pdf
+-- <ftp://reports.stanford.edu/pub/cstr/reports/cs/tr/79/773/CS-TR-79-773.pdf>
 --
 instance Monoid Stdev where
   mempty = Stdev 0 0 0
