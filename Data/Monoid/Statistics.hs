@@ -14,7 +14,7 @@ module Data.Monoid.Statistics ( StatMonoid(..)
                                 -- * Statistic monoids
                               , Count(..)
                               , Mean(..)
-                              , Stdev(..)
+                              , Stdev()
                               , stdev, stdev', variance, mean
                                 -- * Additional information
                                 -- $info
@@ -170,45 +170,63 @@ instance (StatMonoid a x, StatMonoid b x) => StatMonoid (TwoStats a b) x where
 
 -- | Intermediate quantities to calculate the standard deviation.
 -- Only samples of 'Double' are supported.
-data Stdev = Stdev { sumOfSquares :: {-# UNPACK #-} !Double
-                                     -- ^ Current $\sum_i (x_i)^2$.
-                   , sumOfEntries :: {-# UNPACK #-} !Double
-                                     -- ^ Current $\sum_i x_i$.
-                   , sampleCountStdev :: {-# UNPACK #-} !Int
-                                     -- ^ Length of the sample.
+data Stdev = Stdev { stdev'sum   :: {-# UNPACK #-} !Double
+                                 -- ^ Current sum $\sum_i x_i$.
+                   , stdev'sumsq :: {-# UNPACK #-} !Double
+                                 -- ^ Current $\sum_i (x_i - \bar {x_n})^2$.
+                   , stdev'n     :: {-# UNPACK #-} !Int
+                                 -- ^ Current length of the sample.
                    }
            deriving Show
 
 -- | Calculate mean of the sample (use 'Mean' if you need only it).
 mean :: Stdev -> Double
-mean !(Stdev sumsq sumxs n) = sumxs / fromIntegral n
+mean !s = stdev'sum s / fromIntegral (stdev'n s)
 
--- | Calculate standard deviation of the sample (unbiased estimator, $\sigma$).
+-- | Calculate standard deviation of the sample
+-- (unbiased estimator, $\sigma$, where the denominator is $n$).
 stdev' :: Stdev -> Double
-stdev' !(Stdev sumsq sumxs n) = sqrt $ (sumsq - sumxs ^ 2 / n') / n'
-  where n' = fromIntegral n
+stdev' !s = sqrt $ m2 / n
+  where n = fromIntegral $ stdev'n s
+        m2 = stdev'sumsq s
 
--- | Calculate sample standard deviation (biased estimator, $s$).
+-- | Calculate sample standard deviation (biased estimator, $s$, where
+-- the denominator is $n - 1$).
 stdev :: Stdev -> Double
 stdev = sqrt . variance
 
--- | Calculate unbiased estimate of the variance.
+-- | Calculate unbiased estimate of the variance, where the
+-- denominator is $n-1$.
 variance :: Stdev -> Double
-variance !(Stdev sumsq sumxs n) = (sumsq - sumxs^2 / n') / (n'-1)
-  where n' = fromIntegral n
+variance !s = m2 / (n-1)
+  where n = fromIntegral $ stdev'n s
+        m2 = stdev'sumsq s
 
+-- | Using parallel algorithm from:
+-- 
+-- Chan, Tony F.; Golub, Gene H.; LeVeque, Randall J. (1979),
+-- "Updating Formulae and a Pairwise Algorithm for Computing Sample
+-- Variances.", Technical Report STAN-CS-79-773, Department of
+-- Computer Science, Stanford University. Page 4.
+-- 
+-- ftp://reports.stanford.edu/pub/cstr/reports/cs/tr/79/773/CS-TR-79-773.pdf
+--
 instance Monoid Stdev where
   mempty = Stdev 0 0 0
-  mappend !(Stdev sumsq1 sum1 n1) !(Stdev sumsq2 sum2 n2) =
-           Stdev (sumsq1 + sumsq2) (sum1 + sum2) (n1 + n2)
+  mappend !(Stdev ta sa n1) !(Stdev tb sb n2) = Stdev (ta+tb) sumsq (n1+n2)
+    where
+      na = fromIntegral n1
+      nb = fromIntegral n2
+      nom = (ta * nb - tb * na)^2
+      sumsq
+        | n1 == 0 || n2 == 0 = sa + sb  -- because either sa or sb should be 0
+        | otherwise          = sa + sb + nom / ((na + nb) * na * nb)
   {-# INLINE mempty #-}
   {-# INLINE mappend #-}
 
-stdevOfOne :: Double -> Stdev
-stdevOfOne !x = Stdev (x^2) x 1
-
 instance StatMonoid Stdev Double where
-  pappend !x !(Stdev sumsq sum' n) = Stdev (sumsq + x^2) (sum' + x) (n + 1)
+  -- Can be implemented directly as in Welford-Knuth algorithm.
+  pappend !x !s = s `mappend` (Stdev x 0 1)
   {-# INLINE pappend #-}
             
 -- $info
