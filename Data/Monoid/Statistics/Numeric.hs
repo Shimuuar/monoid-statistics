@@ -4,7 +4,10 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 module Data.Monoid.Statistics.Numeric ( Mean(..)
                                       , Stdev()
-                                      , stdev, stdev', variance, mean
+                                      , stdev
+                                      , stdevUnbiased
+                                      , variance
+                                      , mean
                                       , ConvertibleToDouble(..)
                                       ) where
 
@@ -60,8 +63,8 @@ mean !s = stdev'sum s / fromIntegral (stdev'n s)
 
 -- | Calculate standard deviation of the sample
 -- (unbiased estimator, $\sigma$, where the denominator is $n$).
-stdev' :: Stdev -> Double
-stdev' !s = sqrt $ m2 / n
+stdevUnbiased :: Stdev -> Double
+stdevUnbiased !s = sqrt $ m2 / n
   where n = fromIntegral $ stdev'n s
         m2 = stdev'sumsq s
 
@@ -103,6 +106,8 @@ instance ConvertibleToDouble a => StatMonoid Stdev a where
   -- Can be implemented directly as in Welford-Knuth algorithm.
   pappend !x !s = s `mappend` (Stdev (toDouble x) 0 1)
   {-# INLINE pappend #-}
+
+
 
 ----------------------------------------------------------------
 -- Conversion to Double
