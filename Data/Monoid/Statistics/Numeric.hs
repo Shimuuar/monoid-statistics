@@ -10,7 +10,7 @@ module Data.Monoid.Statistics.Numeric ( Mean(..)
 
 import Data.Int     (Int8, Int16, Int32, Int64)
 import Data.Word    (Word8,Word16,Word32,Word64,Word)
-import GHC.Float (float2Double)
+import GHC.Float    (float2Double)
 
 import Data.Monoid
 import Data.Monoid.Statistics
@@ -99,9 +99,9 @@ instance Monoid Stdev where
   {-# INLINE mempty #-}
   {-# INLINE mappend #-}
 
-instance StatMonoid Stdev Double where
+instance ConvertibleToDouble a => StatMonoid Stdev a where
   -- Can be implemented directly as in Welford-Knuth algorithm.
-  pappend !x !s = s `mappend` (Stdev x 0 1)
+  pappend !x !s = s `mappend` (Stdev (toDouble x) 0 1)
   {-# INLINE pappend #-}
 
 ----------------------------------------------------------------
