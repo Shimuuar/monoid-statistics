@@ -3,11 +3,14 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 module Data.Monoid.Statistics.Numeric ( Mean(..)
-                                      , Stdev()
-                                      , stdev
-                                      , stdevUnbiased
-                                      , variance
-                                      , mean
+                                      , Variance()
+                                      , calcCountVar
+                                      , calcMeanVar
+                                      , calcVariance
+                                      , calcVarianceUnbiased
+                                      , calcStddev
+                                      , calcStddevUnbiased
+                                        -- * Conversion to Double
                                       , ConvertibleToDouble(..)
                                       ) where
 
@@ -47,38 +50,43 @@ instance ConvertibleToDouble a => StatMonoid Mean a where
 
 
 -- | Intermediate quantities to calculate the standard deviation.
--- Only samples of 'Double' are supported.
-data Stdev = Stdev { stdev'sum   :: {-# UNPACK #-} !Double
-                                 -- ^ Current sum $\sum_i x_i$.
-                   , stdev'sumsq :: {-# UNPACK #-} !Double
-                                 -- ^ Current $\sum_i (x_i - \bar {x_n})^2$.
-                   , stdev'n     :: {-# UNPACK #-} !Int
-                                 -- ^ Current length of the sample.
+data Variance = Variance { varianceSum   :: {-# UNPACK #-} !Double
+                     -- ^ Current sum of elements of sample
+                   , varianceSumSq :: {-# UNPACK #-} !Double
+                     -- ^ Current sum of squares of deviations from current mean
+                   , calcCountVar  :: {-# UNPACK #-} !Int
+                     -- ^ Number of elements in the sample
                    }
            deriving Show
 
 -- | Calculate mean of the sample (use 'Mean' if you need only it).
-mean :: Stdev -> Double
-mean !s = stdev'sum s / fromIntegral (stdev'n s)
+calcMeanVar :: Variance -> Double
+calcMeanVar s = varianceSum s / fromIntegral (calcCountVar s)
+{-# INLINE calcMeanVar #-}
+
+-- | Calculate biased estimate of variance
+calcVariance :: Variance -> Double
+calcVariance s = varianceSumSq s / fromIntegral (calcCountVar s)
+{-# INLINE calcVariance #-}
+
+-- | Calculate unbiased estimate of the variance, where the
+--   denominator is $n-1$.
+calcVarianceUnbiased :: Variance -> Double
+calcVarianceUnbiased s = varianceSumSq s / fromIntegral (calcCountVar s - 1)
+{-# INLINE calcVarianceUnbiased #-}
+
+-- | Calculate sample standard deviation (biased estimator, $s$, where
+--   the denominator is $n-1$).
+calcStddev :: Variance -> Double
+calcStddev = sqrt . calcVariance
+{-# INLINE calcStddev #-}
 
 -- | Calculate standard deviation of the sample
 -- (unbiased estimator, $\sigma$, where the denominator is $n$).
-stdevUnbiased :: Stdev -> Double
-stdevUnbiased !s = sqrt $ m2 / n
-  where n = fromIntegral $ stdev'n s
-        m2 = stdev'sumsq s
+calcStddevUnbiased :: Variance -> Double
+calcStddevUnbiased = sqrt . calcVarianceUnbiased
+{-# INLINE calcStddevUnbiased #-}
 
--- | Calculate sample standard deviation (biased estimator, $s$, where
--- the denominator is $n-1$).
-stdev :: Stdev -> Double
-stdev = sqrt . variance
-
--- | Calculate unbiased estimate of the variance, where the
--- denominator is $n-1$.
-variance :: Stdev -> Double
-variance !s = m2 / (n-1)
-  where n = fromIntegral $ stdev'n s
-        m2 = stdev'sumsq s
 
 -- | Using parallel algorithm from:
 -- 
@@ -89,9 +97,9 @@ variance !s = m2 / (n-1)
 -- 
 -- <ftp://reports.stanford.edu/pub/cstr/reports/cs/tr/79/773/CS-TR-79-773.pdf>
 --
-instance Monoid Stdev where
-  mempty = Stdev 0 0 0
-  mappend !(Stdev ta sa n1) !(Stdev tb sb n2) = Stdev (ta+tb) sumsq (n1+n2)
+instance Monoid Variance where
+  mempty = Variance 0 0 0
+  mappend !(Variance ta sa n1) !(Variance tb sb n2) = Variance (ta+tb) sumsq (n1+n2)
     where
       na = fromIntegral n1
       nb = fromIntegral n2
@@ -102,9 +110,9 @@ instance Monoid Stdev where
   {-# INLINE mempty #-}
   {-# INLINE mappend #-}
 
-instance ConvertibleToDouble a => StatMonoid Stdev a where
+instance ConvertibleToDouble a => StatMonoid Variance a where
   -- Can be implemented directly as in Welford-Knuth algorithm.
-  pappend !x !s = s `mappend` (Stdev (toDouble x) 0 1)
+  pappend !x !s = s `mappend` (Variance (toDouble x) 0 1)
   {-# INLINE pappend #-}
 
 
