@@ -36,6 +36,9 @@ import qualified Data.Foldable as F
 --
 --   > pappend x (pappend y mempty) == pappend x mempty `mappend` pappend y mempty
 --   > mappend x y == mappend y x
+--
+--   It is very similar to Reducer type class from monoids package but
+--   require commutative monoids
 class Monoid m => StatMonoid m a where
   -- | Add one element to monoid accumulator. P stands for point in
   --   analogy for Pointed.

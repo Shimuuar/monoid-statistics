@@ -2,7 +2,10 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
-module Data.Monoid.Statistics.Numeric ( Mean(..)
+module Data.Monoid.Statistics.Numeric ( Count(..)
+                                        -- * Mean
+                                      , Mean(..)
+                                        -- * Variance
                                       , Variance()
                                       , calcCountVar
                                       , calcMeanVar
@@ -50,14 +53,14 @@ instance ConvertibleToDouble a => StatMonoid Mean a where
 
 
 -- | Intermediate quantities to calculate the standard deviation.
-data Variance = Variance { varianceSum   :: {-# UNPACK #-} !Double
-                     -- ^ Current sum of elements of sample
-                   , varianceSumSq :: {-# UNPACK #-} !Double
-                     -- ^ Current sum of squares of deviations from current mean
-                   , calcCountVar  :: {-# UNPACK #-} !Int
-                     -- ^ Number of elements in the sample
-                   }
-           deriving Show
+data Variance = Variance { calcCountVar  :: {-# UNPACK #-} !Int
+                         -- ^ Number of elements in the sample
+                         , varianceSum   :: {-# UNPACK #-} !Double
+                         -- ^ Current sum of elements of sample
+                         , varianceSumSq :: {-# UNPACK #-} !Double
+                         -- ^ Current sum of squares of deviations from current mean
+                         }
+                deriving Show
 
 -- | Calculate mean of the sample (use 'Mean' if you need only it).
 calcMeanVar :: Variance -> Double
@@ -99,7 +102,7 @@ calcStddevUnbiased = sqrt . calcVarianceUnbiased
 --
 instance Monoid Variance where
   mempty = Variance 0 0 0
-  mappend !(Variance ta sa n1) !(Variance tb sb n2) = Variance (ta+tb) sumsq (n1+n2)
+  mappend !(Variance n1 ta sa) !(Variance n2 tb sb) = Variance (n1+n2) (ta+tb) sumsq
     where
       na = fromIntegral n1
       nb = fromIntegral n2
@@ -112,7 +115,7 @@ instance Monoid Variance where
 
 instance ConvertibleToDouble a => StatMonoid Variance a where
   -- Can be implemented directly as in Welford-Knuth algorithm.
-  pappend !x !s = s `mappend` (Variance (toDouble x) 0 1)
+  pappend !x !s = s `mappend` (Variance 1 (toDouble x) 0)
   {-# INLINE pappend #-}
 
 
