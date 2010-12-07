@@ -13,6 +13,9 @@ module Data.Monoid.Statistics.Numeric ( Count(..)
                                       , calcVarianceUnbiased
                                       , calcStddev
                                       , calcStddevUnbiased
+                                        -- Maximum and minimum
+                                      , Max(..)
+                                      , Min(..)
                                         -- * Conversion to Double
                                       , ConvertibleToDouble(..)
                                       ) where
@@ -118,6 +121,33 @@ instance ConvertibleToDouble a => StatMonoid Variance a where
   pappend !x !s = s `mappend` (Variance 1 (toDouble x) 0)
   {-# INLINE pappend #-}
 
+
+newtype Min = Min Double 
+              deriving Show
+
+instance Monoid Min where
+  mempty = Min (0/0)
+  mappend !(Min x) !(Min y) = Min $ if x <= y then x else y
+  {-# INLINE mempty  #-}
+  {-# INLINE mappend #-}  
+
+instance StatMonoid Min Double where
+  pappend !x m = mappend (Min x) m
+  {-# INLINE pappend #-}
+
+
+newtype Max = Max Double 
+              deriving Show
+
+instance Monoid Max where
+  mempty = Max (0/0)
+  mappend !(Max x) !(Max y) = Max $ if x >= y then x else y
+  {-# INLINE mempty  #-}
+  {-# INLINE mappend #-}  
+
+instance StatMonoid Max Double where
+  pappend !x m = mappend (Max x) m
+  {-# INLINE pappend #-}
 
 
 ----------------------------------------------------------------
