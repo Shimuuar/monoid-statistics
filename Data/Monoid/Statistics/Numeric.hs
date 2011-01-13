@@ -122,9 +122,12 @@ instance ConvertibleToDouble a => StatMonoid Variance a where
   {-# INLINE pappend #-}
 
 
-newtype Min = Min Double 
+-- | Calculate minimum of sample. For empty sample returns NaN. Any
+-- NaN encountedred will be ignored. 
+newtype Min = Min { calcMin :: Double }
               deriving Show
 
+-- N.B. forall (x :: Double) (x <= NaN) == False
 instance Monoid Min where
   mempty = Min (0/0)
   mappend !(Min x) !(Min y) = Min $ if x <= y then x else y
@@ -136,7 +139,7 @@ instance StatMonoid Min Double where
   {-# INLINE pappend #-}
 
 
-newtype Max = Max Double 
+newtype Max = Max { calcMax :: Double }
               deriving Show
 
 instance Monoid Max where
