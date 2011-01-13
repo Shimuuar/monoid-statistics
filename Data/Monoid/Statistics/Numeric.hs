@@ -109,7 +109,7 @@ instance Monoid Variance where
     where
       na = fromIntegral n1
       nb = fromIntegral n2
-      nom = (ta * nb - tb * na)^2
+      nom = sqr (ta * nb - tb * na)
       sumsq
         | n1 == 0 || n2 == 0 = sa + sb  -- because either sa or sb should be 0
         | otherwise          = sa + sb + nom / ((na + nb) * na * nb)
@@ -202,3 +202,6 @@ instance ConvertibleToDouble Word64 where
   {-# INLINE toDouble #-}
 
  
+sqr :: Double -> Double
+sqr x = x * x
+{-# INLINE sqr #-}
