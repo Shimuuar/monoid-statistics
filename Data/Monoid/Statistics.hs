@@ -1,6 +1,7 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE BangPatterns          #-}
+{-# LANGUAGE DeriveDataTypeable    #-}
 -- |
 -- Module     : Data.Monoid.Statistics
 -- Copyright  : Copyright (c) 2010, Alexey Khudyakov <alexey.skladnoy@gmail.com>
@@ -18,6 +19,7 @@ module Data.Monoid.Statistics ( StatMonoid(..)
 
 
 import Data.Monoid
+import Data.Typeable (Typeable)
 import qualified Data.Foldable as F
 
 
@@ -57,6 +59,7 @@ evalStatistic = F.foldl' (flip pappend) mempty
 data TwoStats a b = TwoStats { calcStat1 :: !a
                              , calcStat2 :: !b
                              }
+                    deriving (Show,Eq,Typeable)
 
 instance (Monoid a, Monoid b) => Monoid (TwoStats a b) where
   mempty = TwoStats mempty mempty

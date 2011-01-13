@@ -1,7 +1,8 @@
-{-# LANGUAGE BangPatterns #-}
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE BangPatterns          #-}
+{-# LANGUAGE FlexibleContexts      #-}
+{-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE DeriveDataTypeable    #-}
 module Data.Monoid.Statistics.Numeric ( 
     -- * Mean and variance
     Count(..)
@@ -29,7 +30,7 @@ import GHC.Float    (float2Double)
 
 import Data.Monoid
 import Data.Monoid.Statistics
-
+import Data.Typeable (Typeable)
 
 ----------------------------------------------------------------
 -- Statistical monoids
@@ -37,7 +38,7 @@ import Data.Monoid.Statistics
 
 -- | Simplest statistics. Number of elements in the sample
 newtype Count a = Count { calcCountI :: a }
-                  deriving Show
+                  deriving (Show,Eq,Ord,Typeable)
 
 -- | Fix type of monoid
 asCount :: Count a -> Count a
@@ -67,7 +68,7 @@ instance CalcCount (Count Int) where
 -- Numeric stability of 'mappend' is not proven.
 data Mean = Mean {-# UNPACK #-} !Int    -- Number of entries
                  {-# UNPACK #-} !Double -- Current mean
-            deriving Show
+            deriving (Show,Eq,Typeable)
 
 -- | Fix type of monoid
 asMean :: Mean -> Mean
@@ -101,7 +102,7 @@ instance CalcMean Mean where
 data Variance = Variance {-# UNPACK #-} !Int    --  Number of elements in the sample
                          {-# UNPACK #-} !Double -- Current sum of elements of sample
                          {-# UNPACK #-} !Double -- Current sum of squares of deviations from current mean
-                deriving Show
+                deriving (Show,Eq,Typeable)
 
 -- | Fix type of monoid
 asVariance :: Variance -> Variance
@@ -154,7 +155,7 @@ instance CalcVariance Variance where
 -- | Calculate minimum of sample. For empty sample returns NaN. Any
 -- NaN encountedred will be ignored. 
 newtype Min = Min { calcMin :: Double }
-              deriving Show
+              deriving (Show,Eq,Ord,Typeable)
 
 -- N.B. forall (x :: Double) (x <= NaN) == False
 instance Monoid Min where
@@ -173,7 +174,7 @@ instance StatMonoid Min Double where
 -- | Calculate maximum of sample. For empty sample returns NaN. Any
 -- NaN encountedred will be ignored. 
 newtype Max = Max { calcMax :: Double }
-              deriving Show
+              deriving (Show,Eq,Ord,Typeable)
 
 instance Monoid Max where
   mempty = Max (0/0)
