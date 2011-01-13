@@ -152,7 +152,8 @@ instance StatMonoid Min Double where
 
 
 
-
+-- | Calculate maximum of sample. For empty sample returns NaN. Any
+-- NaN encountedred will be ignored. 
 newtype Max = Max { calcMax :: Double }
               deriving Show
 
