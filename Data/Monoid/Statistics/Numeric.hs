@@ -5,8 +5,11 @@
 module Data.Monoid.Statistics.Numeric ( 
     -- * Mean and variance
     Count(..)
+  , asCount
   , Mean(..)
+  , asMean
   , Variance(..)
+  , asVariance
     -- ** Ad-hoc accessors
   , CalcCount(..)
   , CalcMean(..)
@@ -36,6 +39,11 @@ import Data.Monoid.Statistics
 newtype Count a = Count { calcCountI :: a }
                   deriving Show
 
+-- | Fix type of monoid
+asCount :: Count a -> Count a
+asCount = id
+{-# INLINE asCount #-}
+
 instance Integral a => Monoid (Count a) where
   mempty = Count 0
   (Count i) `mappend` (Count j) = Count (i + j)
@@ -60,6 +68,11 @@ instance CalcCount (Count Int) where
 data Mean = Mean {-# UNPACK #-} !Int    -- Number of entries
                  {-# UNPACK #-} !Double -- Current mean
             deriving Show
+
+-- | Fix type of monoid
+asMean :: Mean -> Mean
+asMean = id
+{-# INLINE asMean #-}
 
 instance Monoid Mean where
   mempty = Mean 0 0
@@ -89,6 +102,11 @@ data Variance = Variance {-# UNPACK #-} !Int    --  Number of elements in the sa
                          {-# UNPACK #-} !Double -- Current sum of elements of sample
                          {-# UNPACK #-} !Double -- Current sum of squares of deviations from current mean
                 deriving Show
+
+-- | Fix type of monoid
+asVariance :: Variance -> Variance
+asVariance = id
+{-# INLINE asVariance #-}
 
 -- | Using parallel algorithm from:
 -- 

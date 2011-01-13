@@ -16,8 +16,8 @@ sampleI = runST $ replicateM 1000 . uniform =<< create
 
 main :: IO ()
 main = do
-  defaultMain [ bench "mean-list-D" $ nf  (calcMean . evalStatistic) sampleD 
-              , bench "mean-list-D" $ nf  (calcMean . evalStatistic) sampleI
-              , bench "var-list-D"  $ nf  (calcVariance . evalStatistic) sampleI
-              , bench "var-list-D"  $ nf  (calcVariance . evalStatistic) sampleI
+  defaultMain [ bench "mean-list-D" $ nf  (calcMean     . asMean     . evalStatistic) sampleD 
+              , bench "mean-list-I" $ nf  (calcMean     . asMean     . evalStatistic) sampleI
+              , bench "var-list-D"  $ nf  (calcVariance . asVariance . evalStatistic) sampleI
+              , bench "var-list-I"  $ nf  (calcVariance . asVariance . evalStatistic) sampleI
               ]
