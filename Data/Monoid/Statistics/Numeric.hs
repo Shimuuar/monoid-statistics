@@ -32,6 +32,21 @@ import Data.Monoid.Statistics
 -- Statistical monoids
 ----------------------------------------------------------------
 
+-- | Simplest statistics. Number of elements in the sample
+newtype Count a = Count { calcCount :: a }
+                  deriving Show
+
+instance Integral a => Monoid (Count a) where
+  mempty = Count 0
+  (Count i) `mappend` (Count j) = Count (i + j)
+  {-# INLINE mempty  #-}
+  {-# INLINE mappend #-}
+  
+instance (Integral a) => StatMonoid (Count a) b where
+  pappend _ !(Count n) = Count (n + 1)
+  {-# INLINE pappend #-}
+
+
 -- | Mean of sample. Samples of Double,Float and bui;t-in integral
 --   types are supported
 --

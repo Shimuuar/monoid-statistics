@@ -11,7 +11,6 @@
 module Data.Monoid.Statistics ( StatMonoid(..)
                               , evalStatistic
                                 -- * Statistic monoids
-                              , Count(..)
                               , TwoStats(..)
                                 -- * Additional information
                                 -- $info
@@ -48,30 +47,7 @@ class Monoid m => StatMonoid m a where
 --   foldl'.
 evalStatistic :: (F.Foldable d, StatMonoid m a) => d a -> m
 evalStatistic = F.foldl' (flip pappend) mempty
-
-
-
-----------------------------------------------------------------
--- Simple monoids
-----------------------------------------------------------------
-
--- | Simplest statistics. Number of elements in the sample
-newtype Count a = Count { calcCount :: a }
-                  deriving Show
-
-instance Integral a => Monoid (Count a) where
-  mempty = Count 0
-  (Count i) `mappend` (Count j) = Count (i + j)
-  {-# INLINE mempty  #-}
-  {-# INLINE mappend #-}
   
-instance (Integral a) => StatMonoid (Count a) b where
-  pappend _ !(Count n) = Count (n + 1)
-  {-# INLINE pappend #-}
-  
-  
-  
-
 
 ----------------------------------------------------------------
 -- Generic monoids
