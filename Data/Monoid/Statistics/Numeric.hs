@@ -2,23 +2,23 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
-module Data.Monoid.Statistics.Numeric ( Count(..)
-                                        -- * Mean
-                                      , Mean(..)
-                                        -- * Variance
-                                      , Variance()
-                                      , calcCountVar
-                                      , calcMeanVar
-                                      , calcVariance
-                                      , calcVarianceUnbiased
-                                      , calcStddev
-                                      , calcStddevUnbiased
-                                        -- Maximum and minimum
-                                      , Max(..)
-                                      , Min(..)
-                                        -- * Conversion to Double
-                                      , ConvertibleToDouble(..)
-                                      ) where
+module Data.Monoid.Statistics.Numeric ( 
+    -- * Mean and variance
+    Count(..)
+  , Mean(..)
+  , Variance(..)
+    -- ** Ad-hoc accessors
+  , CalcCount(..)
+  , CalcMean(..)
+  , CalcVariance(..)
+  , calcStddev
+  , calcStddevUnbiased
+    -- * Maximum and minimum
+  , Max(..)
+  , Min(..)
+    -- * Conversion to Double
+  , ConvertibleToDouble(..)
+  ) where
 
 import Data.Int     (Int8, Int16, Int32, Int64)
 import Data.Word    (Word8,Word16,Word32,Word64,Word)
@@ -33,7 +33,7 @@ import Data.Monoid.Statistics
 ----------------------------------------------------------------
 
 -- | Simplest statistics. Number of elements in the sample
-newtype Count a = Count { calcCount :: a }
+newtype Count a = Count { calcCountI :: a }
                   deriving Show
 
 instance Integral a => Monoid (Count a) where
@@ -46,19 +46,24 @@ instance (Integral a) => StatMonoid (Count a) b where
   pappend _ !(Count n) = Count (n + 1)
   {-# INLINE pappend #-}
 
+instance CalcCount (Count Int) where
+  calcCount = calcCountI
+  {-# INLINE calcCount #-}
+
+
+
 
 -- | Mean of sample. Samples of Double,Float and bui;t-in integral
 --   types are supported
 --
 -- Numeric stability of 'mappend' is not proven.
-data Mean = Mean { calcMean      :: {-# UNPACK #-} !Double -- ^ Current mean
-                 , calcCountMean :: {-# UNPACK #-} !Int    -- ^ Number of entries
-                 }
+data Mean = Mean {-# UNPACK #-} !Int    -- Number of entries
+                 {-# UNPACK #-} !Double -- Current mean
             deriving Show
 
 instance Monoid Mean where
   mempty = Mean 0 0
-  mappend !(Mean x n) !(Mean y k) = Mean ((x*n' + y*k') / (n' + k')) (n + k)
+  mappend !(Mean n x) !(Mean k y) = Mean (n + k) ((x*n' + y*k') / (n' + k')) 
     where
       n' = fromIntegral n
       k' = fromIntegral k
@@ -66,48 +71,24 @@ instance Monoid Mean where
   {-# INLINE mappend #-}
 
 instance ConvertibleToDouble a => StatMonoid Mean a where
-  pappend !x !(Mean m n) = Mean (m + (toDouble x - m) / fromIntegral n') n' where n' = n+1
+  pappend !x !(Mean n m) = Mean n' (m + (toDouble x - m) / fromIntegral n') where n' = n+1
   {-# INLINE pappend #-}
+
+instance CalcCount Mean where
+  calcCount (Mean n _) = n
+  {-# INLINE calcCount #-}
+instance CalcMean Mean where
+  calcMean (Mean _ m) = m
+  {-# INLINE calcMean #-}
+
+
 
 
 -- | Intermediate quantities to calculate the standard deviation.
-data Variance = Variance { calcCountVar  :: {-# UNPACK #-} !Int
-                         -- ^ Number of elements in the sample
-                         , varianceSum   :: {-# UNPACK #-} !Double
-                         -- ^ Current sum of elements of sample
-                         , varianceSumSq :: {-# UNPACK #-} !Double
-                         -- ^ Current sum of squares of deviations from current mean
-                         }
+data Variance = Variance {-# UNPACK #-} !Int    --  Number of elements in the sample
+                         {-# UNPACK #-} !Double -- Current sum of elements of sample
+                         {-# UNPACK #-} !Double -- Current sum of squares of deviations from current mean
                 deriving Show
-
--- | Calculate mean of the sample (use 'Mean' if you need only it).
-calcMeanVar :: Variance -> Double
-calcMeanVar s = varianceSum s / fromIntegral (calcCountVar s)
-{-# INLINE calcMeanVar #-}
-
--- | Calculate biased estimate of variance
-calcVariance :: Variance -> Double
-calcVariance s = varianceSumSq s / fromIntegral (calcCountVar s)
-{-# INLINE calcVariance #-}
-
--- | Calculate unbiased estimate of the variance, where the
---   denominator is $n-1$.
-calcVarianceUnbiased :: Variance -> Double
-calcVarianceUnbiased s = varianceSumSq s / fromIntegral (calcCountVar s - 1)
-{-# INLINE calcVarianceUnbiased #-}
-
--- | Calculate sample standard deviation (biased estimator, $s$, where
---   the denominator is $n-1$).
-calcStddev :: Variance -> Double
-calcStddev = sqrt . calcVariance
-{-# INLINE calcStddev #-}
-
--- | Calculate standard deviation of the sample
--- (unbiased estimator, $\sigma$, where the denominator is $n$).
-calcStddevUnbiased :: Variance -> Double
-calcStddevUnbiased = sqrt . calcVarianceUnbiased
-{-# INLINE calcStddevUnbiased #-}
-
 
 -- | Using parallel algorithm from:
 -- 
@@ -136,6 +117,21 @@ instance ConvertibleToDouble a => StatMonoid Variance a where
   pappend !x !s = s `mappend` (Variance 1 (toDouble x) 0)
   {-# INLINE pappend #-}
 
+instance CalcCount Variance where
+  calcCount (Variance n _ _) = n
+  {-# INLINE calcCount #-}
+instance CalcMean Variance where
+  calcMean (Variance n t _) = t / fromIntegral n
+  {-# INLINE calcMean #-}
+instance CalcVariance Variance where
+  calcVariance (Variance n _ s) = s / fromIntegral n
+  calcVarianceUnbiased (Variance n _ s) = s / fromIntegral (n-1)
+  {-# INLINE calcVariance         #-}
+  {-# INLINE calcVarianceUnbiased #-}
+
+
+
+
 
 -- | Calculate minimum of sample. For empty sample returns NaN. Any
 -- NaN encountedred will be ignored. 
@@ -154,6 +150,9 @@ instance StatMonoid Min Double where
   {-# INLINE pappend #-}
 
 
+
+
+
 newtype Max = Max { calcMax :: Double }
               deriving Show
 
@@ -166,6 +165,41 @@ instance Monoid Max where
 instance StatMonoid Max Double where
   pappend !x m = mappend (Max x) m
   {-# INLINE pappend #-}
+
+
+
+
+----------------------------------------------------------------
+-- Ad-hoc type class
+----------------------------------------------------------------
+  
+class CalcCount m where
+  -- | Number of elements in sample
+  calcCount :: m -> Int
+
+class CalcMean m where
+  -- | Calculate esimate of mean of a sample
+  calcMean :: m -> Double
+  
+class CalcVariance m where
+  -- | Calculate biased estimate of variance
+  calcVariance         :: m -> Double
+  -- | Calculate unbiased estimate of the variance, where the
+  --   denominator is $n-1$.
+  calcVarianceUnbiased :: m -> Double
+
+-- | Calculate sample standard deviation (biased estimator, $s$, where
+--   the denominator is $n-1$).
+calcStddev :: CalcVariance m => m -> Double
+calcStddev = sqrt . calcVariance
+{-# INLINE calcStddev #-}
+
+-- | Calculate standard deviation of the sample
+-- (unbiased estimator, $\sigma$, where the denominator is $n$).
+calcStddevUnbiased :: CalcVariance m => m -> Double
+calcStddevUnbiased = sqrt . calcVarianceUnbiased
+{-# INLINE calcStddevUnbiased #-}
+
 
 
 ----------------------------------------------------------------
