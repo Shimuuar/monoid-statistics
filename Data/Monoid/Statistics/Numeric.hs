@@ -20,8 +20,6 @@ module Data.Monoid.Statistics.Numeric (
     -- * Maximum and minimum
   , Max(..)
   , Min(..)
-    -- * Conversion to Double
-  , ConvertibleToDouble(..)
   ) where
 
 import Data.Int     (Int8, Int16, Int32, Int64)
@@ -84,8 +82,8 @@ instance Monoid Mean where
   {-# INLINE mempty  #-}
   {-# INLINE mappend #-}
 
-instance ConvertibleToDouble a => StatMonoid Mean a where
-  pappend !x !(Mean n m) = Mean n' (m + (toDouble x - m) / fromIntegral n') where n' = n+1
+instance Real a => StatMonoid Mean a where
+  pappend !x !(Mean n m) = Mean n' (m + (realToFrac x - m) / fromIntegral n') where n' = n+1
   {-# INLINE pappend #-}
 
 instance CalcCount Mean where
@@ -131,9 +129,9 @@ instance Monoid Variance where
   {-# INLINE mempty #-}
   {-# INLINE mappend #-}
 
-instance ConvertibleToDouble a => StatMonoid Variance a where
+instance Real a => StatMonoid Variance a where
   -- Can be implemented directly as in Welford-Knuth algorithm.
-  pappend !x !s = s `mappend` (Variance 1 (toDouble x) 0)
+  pappend !x !s = s `mappend` (Variance 1 (realToFrac x) 0)
   {-# INLINE pappend #-}
 
 instance CalcCount Variance where
@@ -223,56 +221,8 @@ calcStddevUnbiased = sqrt . calcVarianceUnbiased
 
 
 ----------------------------------------------------------------
--- Conversion to Double
+-- Helpers
 ----------------------------------------------------------------
-
--- | Data type which could be convered to Double
-class ConvertibleToDouble a where
-  toDouble :: a -> Double
-  
--- Floating point
-instance ConvertibleToDouble Double where
-  toDouble = id
-  {-# INLINE toDouble #-}
-instance ConvertibleToDouble Float where
-  toDouble = float2Double
-  {-# INLINE toDouble #-}
--- Basic integral types
-instance ConvertibleToDouble Integer where
-  toDouble = fromIntegral
-  {-# INLINE toDouble #-}
-instance ConvertibleToDouble Int where
-  toDouble = fromIntegral
-  {-# INLINE toDouble #-}
-instance ConvertibleToDouble Word where
-  toDouble = fromIntegral
-  {-# INLINE toDouble #-}
--- Integral types with fixed size
-instance ConvertibleToDouble Int8 where
-  toDouble = fromIntegral
-  {-# INLINE toDouble #-}
-instance ConvertibleToDouble Int16 where
-  toDouble = fromIntegral
-  {-# INLINE toDouble #-}
-instance ConvertibleToDouble Int32 where
-  toDouble = fromIntegral
-  {-# INLINE toDouble #-}
-instance ConvertibleToDouble Int64 where
-  toDouble = fromIntegral
-  {-# INLINE toDouble #-}
-instance ConvertibleToDouble Word8 where
-  toDouble = fromIntegral
-  {-# INLINE toDouble #-}
-instance ConvertibleToDouble Word16 where
-  toDouble = fromIntegral
-  {-# INLINE toDouble #-}
-instance ConvertibleToDouble Word32 where
-  toDouble = fromIntegral
-  {-# INLINE toDouble #-}
-instance ConvertibleToDouble Word64 where
-  toDouble = fromIntegral
-  {-# INLINE toDouble #-}
-
  
 sqr :: Double -> Double
 sqr x = x * x
