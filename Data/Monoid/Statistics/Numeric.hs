@@ -22,10 +22,6 @@ module Data.Monoid.Statistics.Numeric (
   , Min(..)
   ) where
 
-import Data.Int     (Int8, Int16, Int32, Int64)
-import Data.Word    (Word8,Word16,Word32,Word64,Word)
-import GHC.Float    (float2Double)
-
 import Data.Monoid
 import Data.Monoid.Statistics
 import Data.Typeable (Typeable)
