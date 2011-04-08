@@ -9,15 +9,17 @@
 -- Maintainer : Alexey Khudyakov <alexey.skladnoy@gmail.com>
 -- Stability  : experimental
 -- 
-module Data.Monoid.Statistics ( StatMonoid(..)
-                              , evalStatistic
-                                -- * Statistic monoids
-                              , TwoStats(..)
-                                -- * Additional information
-                                -- $info
-                                -- * Examples
-                                -- $examples
-                              ) where
+module Data.Monoid.Statistics ( 
+    -- * Type class
+    StatMonoid(..)
+  , evalStatistic
+    -- ** Examples
+    -- $examples
+    -- * Generic monoid
+  , TwoStats(..)
+    -- * Additional information
+    -- $info
+  ) where
 
 
 import Data.Monoid
