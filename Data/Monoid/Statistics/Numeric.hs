@@ -154,16 +154,16 @@ newtype Min = Min { calcMin :: Double }
 -- N.B. forall (x :: Double) (x <= NaN) == False
 instance Monoid Min where
   mempty = Min (0/0)
-  mappend !(Min x) !(Min y) = Min $ if x <= y then x else y
+  mappend !(Min x) !(Min y) 
+    | isNaN x   = Min y
+    | isNaN y   = Min x
+    | otherwise = Min (min x y)
   {-# INLINE mempty  #-}
   {-# INLINE mappend #-}  
 
 instance StatMonoid Min Double where
   pappend !x m = mappend (Min x) m
   {-# INLINE pappend #-}
-
-
-
 
 -- | Calculate maximum of sample. For empty sample returns NaN. Any
 -- NaN encountedred will be ignored. 
@@ -172,7 +172,10 @@ newtype Max = Max { calcMax :: Double }
 
 instance Monoid Max where
   mempty = Max (0/0)
-  mappend !(Max x) !(Max y) = Max $ if x >= y then x else y
+  mappend !(Max x) !(Max y) 
+    | isNaN x   = Max y
+    | isNaN y   = Max x
+    | otherwise = Max (max x y)
   {-# INLINE mempty  #-}
   {-# INLINE mappend #-}  
 
