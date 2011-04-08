@@ -15,6 +15,8 @@ module Data.Monoid.Statistics ( StatMonoid(..)
                               , TwoStats(..)
                                 -- * Additional information
                                 -- $info
+                                -- * Examples
+                                -- $examples
                               ) where
 
 
@@ -32,6 +34,7 @@ import qualified Data.Foldable as F
 --
 --   Statistic could be calculated with fold over sample. Since
 --   accumulator is 'Monoid' such fold could be easily parralelized.
+--   Check examples section for more information.
 --
 --   Instance must satisfy following law:
 --
@@ -92,9 +95,48 @@ instance (StatMonoid a x, StatMonoid b x) => StatMonoid (TwoStats a b) x where
 -- This indeed proves that monoid could be constructed. Monoid above
 -- is completely impractical. It runs in O(n) space. However for some
 -- statistics monoids which runs in O(1) space could be
--- implemented. For example mean. 
+-- implemented. Simple examples of such statistics are number of
+-- elements in sample or mean of a sample.
 --
 -- On the other hand some statistics could not be implemented in such
 -- way. For example calculation of median require O(n) space. Variance
--- could be implemented in O(1) but such implementation won't be
--- numerically stable. 
+-- could be implemented in O(1) but such implementation will have
+-- problems with numberical stability.
+
+
+
+-- $examples
+--
+-- These examples show how to find maximum and minimum of a sample in
+-- one pass over data.
+-- 
+-- This is test data. It's not limited to list but could be anything
+-- what could be folded.
+--
+-- > > let xs = [1..100] :: [Double]
+-- 
+-- Now let calculate maximum of test sample using two methods. First
+-- one is to use generic function 'evalStatistic' and another one is
+-- fold.
+--
+-- > > evalStatistic xs :: Max
+-- > Max {calcMax = 100.0}
+-- > > foldl (flip pappend) mempty xs :: Max
+-- > Max {calcMax = 100.0}
+--
+-- More complicated example allows to combine several monoids
+-- together. It allows to calculate two statistics in one pass:
+--
+-- > > evalStatistic xs :: TwoStats Min Max
+-- > TwoStats {calcStat1 = Min {calcMin = 1.0}, calcStat2 = Max {calcMax = 100.0}}
+--
+-- Last example shows how to calculate nuber of elements, mean and
+-- variance at once:
+--
+-- > > let v = evalStatistic xs :: Variance
+-- > > calcCount v
+-- > 100
+-- > > calcMean v
+-- > 50.5
+-- > > calcStddev v
+-- > 28.86607004772212

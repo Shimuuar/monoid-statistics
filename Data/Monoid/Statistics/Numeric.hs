@@ -12,6 +12,7 @@ module Data.Monoid.Statistics.Numeric (
   , Variance(..)
   , asVariance
     -- ** Ad-hoc accessors
+    -- $accessors
   , CalcCount(..)
   , CalcMean(..)
   , CalcVariance(..)
@@ -190,14 +191,41 @@ instance StatMonoid Max Double where
 -- Ad-hoc type class
 ----------------------------------------------------------------
   
+-- $accessors
+--
+-- Monoids 'Count', 'Mean' and 'Variance' form some kind of tower.
+-- Every successive monoid can calculate every statistics previous
+-- monoids can. So to avoid replicating accessors for each statistics
+-- a set of ad-hoc type classes was added. 
+--
+-- This approach have deficiency. It becomes to infer type of monoidal
+-- accumulator from accessor function so following expression will be
+-- rejected:
+-- 
+-- > calcCount $ evalStatistics xs
+--
+-- Indeed type of accumulator is:
+--
+-- > forall a . (StatMonoid a, CalcMean a) => a
+--
+-- Therefore it must be fixed by adding explicit type annotation. For
+-- example:
+--
+-- > calcMean (evalStatistics xs :: Mean)
+
+  
+
+-- | Statistics which could count number of elements in the sample
 class CalcCount m where
   -- | Number of elements in sample
   calcCount :: m -> Int
 
+-- | Statistics which could estimate mean of sample
 class CalcMean m where
   -- | Calculate esimate of mean of a sample
   calcMean :: m -> Double
   
+-- | Statistics which could estimate variance of sample
 class CalcVariance m where
   -- | Calculate biased estimate of variance
   calcVariance         :: m -> Double
