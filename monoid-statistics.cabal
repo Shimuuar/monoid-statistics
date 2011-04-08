@@ -1,5 +1,7 @@
+
+
 Name:           monoid-statistics
-Version:        0.3
+Version:        0.3.1
 Cabal-Version:  >= 1.6
 License:        BSD3
 License-File:   LICENSE
@@ -19,7 +21,10 @@ Description:
   This packages is quite similar to monoids package but limited to
   calculation on statistics. In particular it makes use of
   commutatitvity of statistical monoids.
-
+  .
+  Changes:
+  .
+  * 0.3.1 Better documentation; Fix in Min/Max monoids
 
 source-repository head
   type:     hg
