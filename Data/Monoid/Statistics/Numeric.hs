@@ -1,11 +1,14 @@
+{-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE BangPatterns          #-}
+{-# LANGUAGE DeriveDataTypeable    #-}
+{-# LANGUAGE DeriveGeneric         #-}
 {-# LANGUAGE FlexibleContexts      #-}
 {-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE DeriveDataTypeable    #-}
 module Data.Monoid.Statistics.Numeric ( 
     -- * Mean and variance
-    Count(..)
+    CountG(..)
+  , Count
   , asCount
   , Mean(..)
   , asMean
@@ -24,55 +27,59 @@ module Data.Monoid.Statistics.Numeric (
   ) where
 
 import Data.Monoid
-import Data.Monoid.Statistics
-import Data.Typeable (Typeable)
+import Data.Monoid.Statistics.Class
+import Data.Data (Typeable,Data)
+import GHC.Generics (Generic)
 
 ----------------------------------------------------------------
 -- Statistical monoids
 ----------------------------------------------------------------
 
 -- | Simplest statistics. Number of elements in the sample
-newtype Count a = Count { calcCountI :: a }
+newtype CountG a = CountG { calcCountN :: a }
                   deriving (Show,Eq,Ord,Typeable)
 
--- | Fix type of monoid
-asCount :: Count a -> Count a
-asCount = id
-{-# INLINE asCount #-}
+type Count = CountG Int
 
-instance Integral a => Monoid (Count a) where
-  mempty = Count 0
-  (Count i) `mappend` (Count j) = Count (i + j)
+-- | Fix type of monoid
+asCount :: CountG a -> CountG a
+asCount = id
+
+instance Integral a => Monoid (CountG a) where
+  mempty                      = CountG 0
+  CountG i `mappend` CountG j = CountG (i + j)
   {-# INLINE mempty  #-}
   {-# INLINE mappend #-}
   
-instance (Integral a) => StatMonoid (Count a) b where
-  pappend _ !(Count n) = Count (n + 1)
-  {-# INLINE pappend #-}
+instance (Integral a) => StatMonoid (CountG a) b where
+  singletonMonoid _            = CountG 1
+  addValue        (CountG n) _ = CountG (n + 1)
+  {-# INLINE singletonMonoid #-}
+  {-# INLINE addValue        #-}
 
-instance CalcCount (Count Int) where
-  calcCount = calcCountI
+instance CalcCount (CountG Int) where
+  calcCount = calcCountN
   {-# INLINE calcCount #-}
 
 
 
+----------------------------------------------------------------
 
 -- | Mean of sample. Samples of Double,Float and bui;t-in integral
 --   types are supported
 --
 -- Numeric stability of 'mappend' is not proven.
-data Mean = Mean {-# UNPACK #-} !Int    -- Number of entries
-                 {-# UNPACK #-} !Double -- Current mean
-            deriving (Show,Eq,Typeable)
+data Mean = Mean !Int    -- Number of entries
+                 !Double -- Current mean
+            deriving (Show,Eq,Typeable,Data,Generic)
 
 -- | Fix type of monoid
 asMean :: Mean -> Mean
 asMean = id
-{-# INLINE asMean #-}
 
 instance Monoid Mean where
   mempty = Mean 0 0
-  mappend !(Mean n x) !(Mean k y) = Mean (n + k) ((x*n' + y*k') / (n' + k')) 
+  mappend (Mean n x) (Mean k y) = Mean (n + k) ((x*n' + y*k') / (n' + k')) 
     where
       n' = fromIntegral n
       k' = fromIntegral k
@@ -80,18 +87,17 @@ instance Monoid Mean where
   {-# INLINE mappend #-}
 
 instance Real a => StatMonoid Mean a where
-  pappend !x !(Mean n m) = Mean n' (m + (realToFrac x - m) / fromIntegral n') where n' = n+1
-  {-# INLINE pappend #-}
+  addValue (Mean n m) !x = Mean n' (m + (realToFrac x - m) / fromIntegral n') where n' = n+1
+  {-# INLINE addValue #-}
 
 instance CalcCount Mean where
   calcCount (Mean n _) = n
-  {-# INLINE calcCount #-}
 instance CalcMean Mean where
   calcMean (Mean _ m) = m
-  {-# INLINE calcMean #-}
 
 
 
+----------------------------------------------------------------
 
 -- | Intermediate quantities to calculate the standard deviation.
 data Variance = Variance {-# UNPACK #-} !Int    --  Number of elements in the sample
@@ -115,7 +121,7 @@ asVariance = id
 --
 instance Monoid Variance where
   mempty = Variance 0 0 0
-  mappend !(Variance n1 ta sa) !(Variance n2 tb sb) = Variance (n1+n2) (ta+tb) sumsq
+  mappend (Variance n1 ta sa) (Variance n2 tb sb) = Variance (n1+n2) (ta+tb) sumsq
     where
       na = fromIntegral n1
       nb = fromIntegral n2
@@ -128,61 +134,84 @@ instance Monoid Variance where
 
 instance Real a => StatMonoid Variance a where
   -- Can be implemented directly as in Welford-Knuth algorithm.
-  pappend !x !s = s `mappend` (Variance 1 (realToFrac x) 0)
-  {-# INLINE pappend #-}
+  addValue !s !x = s `mappend` (Variance 1 (realToFrac x) 0)
+  {-# INLINE addValue #-}
 
 instance CalcCount Variance where
   calcCount (Variance n _ _) = n
-  {-# INLINE calcCount #-}
 instance CalcMean Variance where
   calcMean (Variance n t _) = t / fromIntegral n
   {-# INLINE calcMean #-}
 instance CalcVariance Variance where
   calcVariance (Variance n _ s) = s / fromIntegral n
   calcVarianceUnbiased (Variance n _ s) = s / fromIntegral (n-1)
-  {-# INLINE calcVariance         #-}
-  {-# INLINE calcVarianceUnbiased #-}
 
 
 
+----------------------------------------------------------------
 
+newtype Min a = Min { calcMin :: Maybe a }
+
+instance Ord a => Monoid (Min a) where
+  mempty = Min Nothing
+  Min (Just a) `mappend` Min (Just b) = Min (Just $! min a b)
+  Min a        `mappend` Min Nothing  = Min a
+  Min Nothing  `mappend` Min b        = Min b
+
+instance (Ord a, a ~ a') => StatMonoid (Min a) a' where
+  singletonMonoid a = Min (Just a)
+
+----------------------------------------------------------------
+
+newtype Max a = Max { calcMax :: Maybe a }
+
+instance Ord a => Monoid (Max a) where
+  mempty = Max Nothing
+  Max (Just a) `mappend` Max (Just b) = Max (Just $! min a b)
+  Max a        `mappend` Max Nothing  = Max a
+  Max Nothing  `mappend` Max b        = Max b
+
+instance (Ord a, a ~ a') => StatMonoid (Max a) a' where
+  singletonMonoid a = Max (Just a)
+
+
+----------------------------------------------------------------
 
 -- | Calculate minimum of sample. For empty sample returns NaN. Any
--- NaN encountedred will be ignored. 
-newtype Min = Min { calcMin :: Double }
-              deriving (Show,Eq,Ord,Typeable)
+-- NaN encountered will be ignored. 
+newtype MinD = MinD { calcMinD :: Double }
+              deriving (Show,Eq,Ord,Typeable,Data,Generic)
 
 -- N.B. forall (x :: Double) (x <= NaN) == False
-instance Monoid Min where
-  mempty = Min (0/0)
-  mappend !(Min x) !(Min y) 
-    | isNaN x   = Min y
-    | isNaN y   = Min x
-    | otherwise = Min (min x y)
+instance Monoid MinD where
+  mempty = MinD (0/0)
+  mappend (MinD x) (MinD y) 
+    | isNaN x   = MinD y
+    | isNaN y   = MinD x
+    | otherwise = MinD (min x y)
   {-# INLINE mempty  #-}
   {-# INLINE mappend #-}  
 
-instance StatMonoid Min Double where
-  pappend !x m = mappend (Min x) m
-  {-# INLINE pappend #-}
+instance a ~ Double => StatMonoid MinD a where
+  singletonMonoid = MinD
 
 -- | Calculate maximum of sample. For empty sample returns NaN. Any
--- NaN encountedred will be ignored. 
-newtype Max = Max { calcMax :: Double }
-              deriving (Show,Eq,Ord,Typeable)
+-- NaN encountered will be ignored. 
+newtype MaxD = MaxD { calcMaxD :: Double }
+              deriving (Show,Eq,Ord,Typeable,Data,Generic)
 
-instance Monoid Max where
-  mempty = Max (0/0)
-  mappend !(Max x) !(Max y) 
-    | isNaN x   = Max y
-    | isNaN y   = Max x
-    | otherwise = Max (max x y)
+instance Monoid MaxD where
+  mempty = MaxD (0/0)
+  mappend (MaxD x) (MaxD y) 
+    | isNaN x   = MaxD y
+    | isNaN y   = MaxD x
+    | otherwise = MaxD (max x y)
   {-# INLINE mempty  #-}
   {-# INLINE mappend #-}  
 
-instance StatMonoid Max Double where
-  pappend !x m = mappend (Max x) m
-  {-# INLINE pappend #-}
+instance a ~ Double => StatMonoid MaxD a where
+  singletonMonoid = MaxD
+
 
 
 
