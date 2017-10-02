@@ -17,7 +17,7 @@ module Data.Monoid.Statistics.Class
   , reduceSample
   , reduceSampleVec
     -- * Data types
-  , Pair
+  , Pair(..)
   ) where
 
 import           Data.Monoid
@@ -27,36 +27,22 @@ import Data.Data    (Typeable,Data)
 import GHC.Generics (Generic)
 
 -- | This type class is used to express parallelizable constant space
---   algorithms for calculation of statistics.
+--   algorithms for calculation of statistics. By definitions
+--   /statistic/ is some measure of sample which doesn't depend on
+--   order of elements (for example: mean, sum, number of elements,
+--   variance, etc).
 --
---   Statistic is some measure of sample which doesn't depend on order
---   of elements (for example: mean, sum, number of elements,
---   variance, etc). For many statistics it's possible to construct
---   constant space algorithm which is expressed as fold.
+--   For many statistics it's possible to possible to construct
+--   constant space algorithm which is expressed as fold. Additionally
+--   it's usually possible to write function which combine state of
+--   fold accumulator to get statistic for union of two samples.
 --
---   FIXME: add commutative diagram
---
---   For example
---   (we ignoring considerations about numerical stability):
---
---   > data Mean a = Mean Int a
---   >
---   > estimateMean :: Num a => [a] -> Mean a
---   > estimateMean = foldl step mean0
---   >   where
---   >     mean0 = Mean 0 0
---   >     step x (Mean n sum) = Mean (n+1) (sum + x)
---
---   Additionally it's usually possible to implement function for
---   merging two accumulator states together with resulting
---   accumulator corresponding to union of samples which were used to
---   build initial ones.
---
---   > mergeMeans :: Num a => Mean a -> Mean a -> Mean a
---   > mergeMeans (Mean n1 x1) (Mean n2 x2) = Mean (n1+n2) (x1+x2)
---
---   Now we can notice that @mergeMeans@ and @mean0@ forms a monoid.
---   Now we have accumulator value which corresponds to empty sample, function which corresponds to union of two
+--   Thus for such algorithm we have value which corresponds to empty
+--   sample, merge function which which corresponds to merging of two
+--   samples, and single step of fold. Last one allows to evaluate
+--   statistic given data sample and first two form a monoid and allow
+--   parallelization: split data into parts, build estimate for each
+--   by folding and then merge them using mappend.
 --
 --   Instance must satisfy following laws. If floating point
 --   arithmetics is used then equality should be understood as
@@ -65,12 +51,11 @@ import GHC.Generics (Generic)
 --   > 1. pappend x (pappend y mempty) == pappend x mempty <> pappend y mempty
 --   > 2. x <> y == y <> x
 class Monoid m => StatMonoid m a where
-  -- | Add one element to monoid accumulator. P stands for point in
-  --   analogy for Pointed.
+  -- | Add one element to monoid accumulator. It's step of fold.
   addValue :: m -> a -> m
   addValue m a = m <> singletonMonoid a
   {-# INLINE addValue #-}
-  -- | State of accumulator corresponding to 1-element sample
+  -- | State of accumulator corresponding to 1-element sample.
   singletonMonoid :: a -> m
   singletonMonoid = addValue mempty
   {-# INLINE singletonMonoid #-}

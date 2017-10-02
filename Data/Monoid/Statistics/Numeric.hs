@@ -5,25 +5,30 @@
 {-# LANGUAGE FlexibleContexts      #-}
 {-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
-module Data.Monoid.Statistics.Numeric ( 
-    -- * Mean and variance
+module Data.Monoid.Statistics.Numeric (
+    -- * Mean & Variance
+    -- ** Number of elements
     CountG(..)
   , Count
   , asCount
+    -- ** Mean
   , Mean(..)
   , asMean
+    -- ** Variance
   , Variance(..)
   , asVariance
-    -- ** Ad-hoc accessors
+    -- * Maximum and minimum
+  , Max(..)
+  , Min(..)
+  , MaxD(..)
+  , MinD(..)
+    -- * Accessors
     -- $accessors
   , CalcCount(..)
   , CalcMean(..)
   , CalcVariance(..)
   , calcStddev
-  , calcStddevUnbiased
-    -- * Maximum and minimum
-  , Max(..)
-  , Min(..)
+  , calcStddevML
   ) where
 
 import Data.Monoid
@@ -41,7 +46,7 @@ newtype CountG a = CountG { calcCountN :: a }
 
 type Count = CountG Int
 
--- | Fix type of monoid
+-- | Type restricted 'id'
 asCount :: CountG a -> CountG a
 asCount = id
 
@@ -50,7 +55,7 @@ instance Integral a => Monoid (CountG a) where
   CountG i `mappend` CountG j = CountG (i + j)
   {-# INLINE mempty  #-}
   {-# INLINE mappend #-}
-  
+
 instance (Integral a) => StatMonoid (CountG a) b where
   singletonMonoid _            = CountG 1
   addValue        (CountG n) _ = CountG (n + 1)
@@ -73,13 +78,13 @@ data Mean = Mean !Int    -- Number of entries
                  !Double -- Current mean
             deriving (Show,Eq,Typeable,Data,Generic)
 
--- | Fix type of monoid
+-- | Type restricted 'id'
 asMean :: Mean -> Mean
 asMean = id
 
 instance Monoid Mean where
   mempty = Mean 0 0
-  mappend (Mean n x) (Mean k y) = Mean (n + k) ((x*n' + y*k') / (n' + k')) 
+  mappend (Mean n x) (Mean k y) = Mean (n + k) ((x*n' + y*k') / (n' + k'))
     where
       n' = fromIntegral n
       k' = fromIntegral k
@@ -93,7 +98,8 @@ instance Real a => StatMonoid Mean a where
 instance CalcCount Mean where
   calcCount (Mean n _) = n
 instance CalcMean Mean where
-  calcMean (Mean _ m) = m
+  calcMean (Mean 0 _) = Nothing
+  calcMean (Mean _ m) = Just m
 
 
 
@@ -111,12 +117,12 @@ asVariance = id
 {-# INLINE asVariance #-}
 
 -- | Using parallel algorithm from:
--- 
+--
 -- Chan, Tony F.; Golub, Gene H.; LeVeque, Randall J. (1979),
 -- Updating Formulae and a Pairwise Algorithm for Computing Sample
 -- Variances., Technical Report STAN-CS-79-773, Department of
 -- Computer Science, Stanford University. Page 4.
--- 
+--
 -- <ftp://reports.stanford.edu/pub/cstr/reports/cs/tr/79/773/CS-TR-79-773.pdf>
 --
 instance Monoid Variance where
@@ -133,23 +139,30 @@ instance Monoid Variance where
   {-# INLINE mappend #-}
 
 instance Real a => StatMonoid Variance a where
-  -- Can be implemented directly as in Welford-Knuth algorithm.
-  addValue !s !x = s `mappend` (Variance 1 (realToFrac x) 0)
-  {-# INLINE addValue #-}
+  singletonMonoid x = Variance 1 (realToFrac x) 0
+  {-# INLINE singletonMonoid #-}
 
 instance CalcCount Variance where
   calcCount (Variance n _ _) = n
+
 instance CalcMean Variance where
-  calcMean (Variance n t _) = t / fromIntegral n
-  {-# INLINE calcMean #-}
+  calcMean (Variance 0 _ _) = Nothing
+  calcMean (Variance n s _) = Just (s / fromIntegral n)
+
 instance CalcVariance Variance where
-  calcVariance (Variance n _ s) = s / fromIntegral n
-  calcVarianceUnbiased (Variance n _ s) = s / fromIntegral (n-1)
+  calcVariance (Variance n _ s)
+    | n < 2     = Nothing
+    | otherwise = Just $! s / fromIntegral (n - 1)
+  calcVarianceML (Variance n _ s)
+    | n < 1     = Nothing
+    | otherwise = Just $! s / fromIntegral n
+
 
 
 
 ----------------------------------------------------------------
 
+-- | Calculate minimum of sample
 newtype Min a = Min { calcMin :: Maybe a }
 
 instance Ord a => Monoid (Min a) where
@@ -163,6 +176,7 @@ instance (Ord a, a ~ a') => StatMonoid (Min a) a' where
 
 ----------------------------------------------------------------
 
+-- | Calculate maximum of sample
 newtype Max a = Max { calcMax :: Maybe a }
 
 instance Ord a => Monoid (Max a) where
@@ -177,37 +191,37 @@ instance (Ord a, a ~ a') => StatMonoid (Max a) a' where
 
 ----------------------------------------------------------------
 
--- | Calculate minimum of sample. For empty sample returns NaN. Any
--- NaN encountered will be ignored. 
+-- | Calculate minimum of sample of Doubles. For empty sample returns NaN. Any
+--   NaN encountered will be ignored.
 newtype MinD = MinD { calcMinD :: Double }
               deriving (Show,Eq,Ord,Typeable,Data,Generic)
 
 -- N.B. forall (x :: Double) (x <= NaN) == False
 instance Monoid MinD where
   mempty = MinD (0/0)
-  mappend (MinD x) (MinD y) 
+  mappend (MinD x) (MinD y)
     | isNaN x   = MinD y
     | isNaN y   = MinD x
     | otherwise = MinD (min x y)
   {-# INLINE mempty  #-}
-  {-# INLINE mappend #-}  
+  {-# INLINE mappend #-}
 
 instance a ~ Double => StatMonoid MinD a where
   singletonMonoid = MinD
 
 -- | Calculate maximum of sample. For empty sample returns NaN. Any
--- NaN encountered will be ignored. 
+--   NaN encountered will be ignored.
 newtype MaxD = MaxD { calcMaxD :: Double }
               deriving (Show,Eq,Ord,Typeable,Data,Generic)
 
 instance Monoid MaxD where
   mempty = MaxD (0/0)
-  mappend (MaxD x) (MaxD y) 
+  mappend (MaxD x) (MaxD y)
     | isNaN x   = MaxD y
     | isNaN y   = MaxD x
     | otherwise = MaxD (max x y)
   {-# INLINE mempty  #-}
-  {-# INLINE mappend #-}  
+  {-# INLINE mappend #-}
 
 instance a ~ Double => StatMonoid MaxD a where
   singletonMonoid = MaxD
@@ -219,67 +233,53 @@ instance a ~ Double => StatMonoid MaxD a where
 ----------------------------------------------------------------
 -- Ad-hoc type class
 ----------------------------------------------------------------
-  
--- $accessors
---
--- Monoids 'Count', 'Mean' and 'Variance' form some kind of tower.
--- Every successive monoid can calculate every statistics previous
--- monoids can. So to avoid replicating accessors for each statistics
--- a set of ad-hoc type classes was added. 
---
--- This approach have deficiency. It becomes to infer type of monoidal
--- accumulator from accessor function so following expression will be
--- rejected:
--- 
--- > calcCount $ evalStatistics xs
---
--- Indeed type of accumulator is:
---
--- > forall a . (StatMonoid a, CalcMean a) => a
---
--- Therefore it must be fixed by adding explicit type annotation. For
--- example:
---
--- > calcMean (evalStatistics xs :: Mean)
 
-  
-
--- | Statistics which could count number of elements in the sample
+-- | Accumulator could be used to evaluate number of elements in
+--   sample.
 class CalcCount m where
   -- | Number of elements in sample
   calcCount :: m -> Int
 
--- | Statistics which could estimate mean of sample
+-- | Monoids which could be used to calculate sample mean:
+--
+--   \[ \bar{x} = \frac{1}{N}\sum_{i=1}^N{x_i} \]
 class CalcMean m where
-  -- | Calculate esimate of mean of a sample
-  calcMean :: m -> Double
-  
--- | Statistics which could estimate variance of sample
+  -- | Returns @Nothing@ if there isn't enough data to make estimate.
+  calcMean :: m -> Maybe Double
+
+-- | Monoids which could be used to calculate sample variance. Both
+--   methods return @Nothing@ if there isn't enough data to make
+--   estimate.
 class CalcVariance m where
-  -- | Calculate biased estimate of variance
-  calcVariance         :: m -> Double
-  -- | Calculate unbiased estimate of the variance, where the
-  --   denominator is $n-1$.
-  calcVarianceUnbiased :: m -> Double
+  -- | Calculate unbiased estimate of variance:
+  --
+  --   \[ \sigma^2 = \frac{1}{N-1}\sum_{i=1}^N(x_i - \bar{x})^2 \]
+  calcVariance   :: m -> Maybe Double
+  -- | Calculate maximum likelihood estimate of variance:
+  --
+  --   \[ \sigma^2 = \frac{1}{N}\sum_{i=1}^N(x_i - \bar{x})^2 \]
+  calcVarianceML :: m -> Maybe Double
 
--- | Calculate sample standard deviation (biased estimator, $s$, where
---   the denominator is $n-1$).
-calcStddev :: CalcVariance m => m -> Double
-calcStddev = sqrt . calcVariance
-{-# INLINE calcStddev #-}
+-- | Calculate sample standard deviation from unbiased estimation of
+--   variance:
+--
+--   \[ \sigma = \sqrt{\frac{1}{N-1}\sum_{i=1}^N(x_i - \bar{x})^2 } \]
+calcStddev :: CalcVariance m => m -> Maybe Double
+calcStddev = fmap sqrt . calcVariance
 
--- | Calculate standard deviation of the sample
--- (unbiased estimator, $\sigma$, where the denominator is $n$).
-calcStddevUnbiased :: CalcVariance m => m -> Double
-calcStddevUnbiased = sqrt . calcVarianceUnbiased
-{-# INLINE calcStddevUnbiased #-}
+-- | Calculate sample standard deviation from maximum likelihood
+--   estimation of variance:
+--
+--   \[ \sigma = \sqrt{\frac{1}{N-1}\sum_{i=1}^N(x_i - \bar{x})^2 } \]
+calcStddevML :: CalcVariance m => m -> Maybe Double
+calcStddevML = fmap sqrt . calcVarianceML
 
 
 
 ----------------------------------------------------------------
 -- Helpers
 ----------------------------------------------------------------
- 
+
 sqr :: Double -> Double
 sqr x = x * x
 {-# INLINE sqr #-}
