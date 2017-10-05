@@ -1,10 +1,12 @@
-{-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE BangPatterns          #-}
 {-# LANGUAGE DeriveDataTypeable    #-}
 {-# LANGUAGE DeriveGeneric         #-}
 {-# LANGUAGE FlexibleContexts      #-}
 {-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE RankNTypes            #-}
+{-# LANGUAGE TemplateHaskell       #-}
+{-# LANGUAGE TypeFamilies          #-}
 module Data.Monoid.Statistics.Numeric (
     -- * Mean & Variance
     -- ** Number of elements
@@ -32,10 +34,11 @@ module Data.Monoid.Statistics.Numeric (
     -- $references
   ) where
 
-import Data.Monoid
 import Data.Monoid.Statistics.Class
-import Data.Data (Typeable,Data)
-import GHC.Generics (Generic)
+import Data.Data                    (Typeable,Data)
+import Data.Vector.Unboxed          (Unbox)
+import Data.Vector.Unboxed.Deriving (derivingUnbox)
+import GHC.Generics                 (Generic)
 
 ----------------------------------------------------------------
 -- Statistical monoids
@@ -226,8 +229,6 @@ instance a ~ Double => StatMonoid MaxD a where
 
 
 
-
-
 ----------------------------------------------------------------
 -- Ad-hoc type class
 ----------------------------------------------------------------
@@ -282,6 +283,35 @@ sqr :: Double -> Double
 sqr x = x * x
 {-# INLINE sqr #-}
 
+
+----------------------------------------------------------------
+-- Unboxed instances
+----------------------------------------------------------------
+
+derivingUnbox "CountG"
+  [t| forall a. Unbox a => CountG a -> a |]
+  [| calcCountN |]
+  [| CountG     |]
+
+derivingUnbox "WelfordMean"
+  [t| WelfordMean -> (Int,Double) |]
+  [| \(WelfordMean a b) -> (a,b)  |]
+  [| \(a,b) -> WelfordMean a b    |]
+
+derivingUnbox "Variance"
+  [t| Variance -> (Int,Double,Double) |]
+  [| \(Variance a b c) -> (a,b,c)  |]
+  [| \(a,b,c) -> Variance a b c    |]
+
+derivingUnbox "MinD"
+  [t| MinD -> Double |]
+  [| calcMinD |]
+  [| MinD     |]
+
+derivingUnbox "MaxD"
+  [t| MaxD -> Double |]
+  [| calcMaxD |]
+  [| MaxD     |]
 
 -- $references
 --

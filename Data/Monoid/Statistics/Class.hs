@@ -3,6 +3,8 @@
 {-# LANGUAGE DeriveGeneric         #-}
 {-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE RankNTypes            #-}
+{-# LANGUAGE TemplateHaskell       #-}
 {-# LANGUAGE TypeFamilies          #-}
 -- |
 -- Module     : Data.Monoid.Statistics
@@ -21,6 +23,8 @@ module Data.Monoid.Statistics.Class
   ) where
 
 import           Data.Monoid
+import           Data.Vector.Unboxed          (Unbox)
+import           Data.Vector.Unboxed.Deriving (derivingUnbox)
 import qualified Data.Foldable       as F
 import qualified Data.Vector.Generic as G
 import Data.Data    (Typeable,Data)
@@ -99,3 +103,8 @@ instance (StatMonoid a x, StatMonoid b x) => StatMonoid (Pair a b) x where
   singletonMonoid x = Pair (singletonMonoid x) (singletonMonoid x)
   {-# INLINE addValue        #-}
   {-# INLINE singletonMonoid #-}
+
+derivingUnbox "Pair"
+  [t| forall a b. (Unbox a, Unbox b) => Pair a b -> (a,b) |]
+  [| \(Pair a b) -> (a,b) |]
+  [| \(a,b) -> Pair a b   |]
