@@ -24,6 +24,9 @@ module Data.Monoid.Statistics.Numeric (
   , Min(..)
   , MaxD(..)
   , MinD(..)
+    -- * Binomial trials
+  , BinomAcc(..)
+  , asBinomAcc
     -- * Accessors
   , CalcCount(..)
   , CalcMean(..)
@@ -113,13 +116,13 @@ instance CalcMean WelfordMean where
 
 ----------------------------------------------------------------
 
--- | Intermediate quantities to calculate the standard deviation.
+-- | Incremental algorithms for calculation the standard deviation.
 data Variance = Variance {-# UNPACK #-} !Int    --  Number of elements in the sample
                          {-# UNPACK #-} !Double -- Current sum of elements of sample
                          {-# UNPACK #-} !Double -- Current sum of squares of deviations from current mean
                 deriving (Show,Eq,Typeable)
 
--- | Fix type of monoid
+-- | Type restricted 'id '
 asVariance :: Variance -> Variance
 asVariance = id
 {-# INLINE asVariance #-}
@@ -226,6 +229,27 @@ instance Monoid MaxD where
 
 instance a ~ Double => StatMonoid MaxD a where
   singletonMonoid = MaxD
+
+
+----------------------------------------------------------------
+
+-- | Accumulator for binomial trials.
+data BinomAcc = BinomAcc { binomAccSuccess :: !Int
+                         , binomAccTotal   :: !Int
+                         }
+  deriving (Show,Eq,Ord,Typeable,Data,Generic)
+
+-- | Type restricted 'id'
+asBinomAcc :: BinomAcc -> BinomAcc
+asBinomAcc = id
+
+instance Monoid BinomAcc where
+  mempty = BinomAcc 0 0
+  mappend (BinomAcc n1 m1) (BinomAcc n2 m2) = BinomAcc (n1+n2) (m1+m2)
+
+instance StatMonoid BinomAcc Bool where
+  addValue (BinomAcc nS nT) True  = BinomAcc (nS+1) (nT+1)
+  addValue (BinomAcc nS nT) False = BinomAcc  nS    (nT+1)
 
 
 
