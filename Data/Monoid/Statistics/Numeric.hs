@@ -12,8 +12,8 @@ module Data.Monoid.Statistics.Numeric (
   , Count
   , asCount
     -- ** Mean
-  , Mean(..)
-  , asMean
+  , WelfordMean(..)
+  , asWelfordMean
     -- ** Variance
   , Variance(..)
   , asVariance
@@ -23,12 +23,13 @@ module Data.Monoid.Statistics.Numeric (
   , MaxD(..)
   , MinD(..)
     -- * Accessors
-    -- $accessors
   , CalcCount(..)
   , CalcMean(..)
   , CalcVariance(..)
   , calcStddev
   , calcStddevML
+    -- * References
+    -- $references
   ) where
 
 import Data.Monoid
@@ -40,7 +41,7 @@ import GHC.Generics (Generic)
 -- Statistical monoids
 ----------------------------------------------------------------
 
--- | Simplest statistics. Number of elements in the sample
+-- | Calculate number of elements in the sample.
 newtype CountG a = CountG { calcCountN :: a }
                   deriving (Show,Eq,Ord,Typeable)
 
@@ -70,36 +71,40 @@ instance CalcCount (CountG Int) where
 
 ----------------------------------------------------------------
 
--- | Mean of sample. Samples of Double,Float and bui;t-in integral
---   types are supported
---
--- Numeric stability of 'mappend' is not proven.
-data Mean = Mean !Int    -- Number of entries
-                 !Double -- Current mean
-            deriving (Show,Eq,Typeable,Data,Generic)
+-- | Incremental calculation of mean. Algorithm is due to Welford
+--   [Welford1962]
+data WelfordMean = WelfordMean !Int    -- Number of entries
+                               !Double -- Current mean
+  deriving (Show,Eq,Typeable,Data,Generic)
 
 -- | Type restricted 'id'
-asMean :: Mean -> Mean
-asMean = id
+asWelfordMean :: WelfordMean -> WelfordMean
+asWelfordMean = id
 
-instance Monoid Mean where
-  mempty = Mean 0 0
-  mappend (Mean n x) (Mean k y) = Mean (n + k) ((x*n' + y*k') / (n' + k'))
+instance Monoid WelfordMean where
+  mempty = WelfordMean 0 0
+  mappend (WelfordMean 0 _) (WelfordMean 0 _)
+    = WelfordMean 0 0
+  mappend (WelfordMean n x) (WelfordMean k y)
+    = WelfordMean (n + k) ((x*n' + y*k') / (n' + k'))
     where
       n' = fromIntegral n
       k' = fromIntegral k
   {-# INLINE mempty  #-}
   {-# INLINE mappend #-}
 
-instance Real a => StatMonoid Mean a where
-  addValue (Mean n m) !x = Mean n' (m + (realToFrac x - m) / fromIntegral n') where n' = n+1
+instance Real a => StatMonoid WelfordMean a where
+  addValue (WelfordMean n m) !x
+    = WelfordMean n' (m + (realToFrac x - m) / fromIntegral n')
+    where
+      n' = n+1
   {-# INLINE addValue #-}
 
-instance CalcCount Mean where
-  calcCount (Mean n _) = n
-instance CalcMean Mean where
-  calcMean (Mean 0 _) = Nothing
-  calcMean (Mean _ m) = Just m
+instance CalcCount WelfordMean where
+  calcCount (WelfordMean n _) = n
+instance CalcMean WelfordMean where
+  calcMean (WelfordMean 0 _) = Nothing
+  calcMean (WelfordMean _ m) = Just m
 
 
 
@@ -116,25 +121,18 @@ asVariance :: Variance -> Variance
 asVariance = id
 {-# INLINE asVariance #-}
 
--- | Using parallel algorithm from:
---
--- Chan, Tony F.; Golub, Gene H.; LeVeque, Randall J. (1979),
--- Updating Formulae and a Pairwise Algorithm for Computing Sample
--- Variances., Technical Report STAN-CS-79-773, Department of
--- Computer Science, Stanford University. Page 4.
---
--- <ftp://reports.stanford.edu/pub/cstr/reports/cs/tr/79/773/CS-TR-79-773.pdf>
---
+-- | Iterative algorithm for calculation of variance [Chan1979]
 instance Monoid Variance where
   mempty = Variance 0 0 0
-  mappend (Variance n1 ta sa) (Variance n2 tb sb) = Variance (n1+n2) (ta+tb) sumsq
+  mappend (Variance n1 ta sa) (Variance n2 tb sb)
+    = Variance (n1+n2) (ta+tb) sumsq
     where
       na = fromIntegral n1
       nb = fromIntegral n2
       nom = sqr (ta * nb - tb * na)
-      sumsq
-        | n1 == 0 || n2 == 0 = sa + sb  -- because either sa or sb should be 0
-        | otherwise          = sa + sb + nom / ((na + nb) * na * nb)
+      sumsq | n1 == 0   = sb
+            | n2 == 0   = sa
+            | otherwise = sa + sb + nom / ((na + nb) * na * nb)
   {-# INLINE mempty #-}
   {-# INLINE mappend #-}
 
@@ -270,7 +268,7 @@ calcStddev = fmap sqrt . calcVariance
 -- | Calculate sample standard deviation from maximum likelihood
 --   estimation of variance:
 --
---   \[ \sigma = \sqrt{\frac{1}{N-1}\sum_{i=1}^N(x_i - \bar{x})^2 } \]
+--   \[ \sigma = \sqrt{\frac{1}{N}\sum_{i=1}^N(x_i - \bar{x})^2 } \]
 calcStddevML :: CalcVariance m => m -> Maybe Double
 calcStddevML = fmap sqrt . calcVarianceML
 
@@ -283,3 +281,16 @@ calcStddevML = fmap sqrt . calcVarianceML
 sqr :: Double -> Double
 sqr x = x * x
 {-# INLINE sqr #-}
+
+
+-- $references
+--
+-- * [Welford1962] Welford, B.P. (1962) Note on a method for
+--   calculating corrected sums of squares and
+--   products. /Technometrics/
+--   4(3):419-420. <http://www.jstor.org/stable/1266577>
+--
+-- * [Chan1979] Chan, Tony F.; Golub, Gene H.; LeVeque, Randall
+--   J. (1979), Updating Formulae and a Pairwise Algorithm for
+--   Computing Sample Variances., Technical Report STAN-CS-79-773,
+--   Department of Computer Science, Stanford University. Page 4.
