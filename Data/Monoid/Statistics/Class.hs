@@ -52,7 +52,7 @@ import GHC.Generics (Generic)
 --   arithmetics is used then equality should be understood as
 --   approximate.
 --
---   > 1. pappend x (pappend y mempty) == pappend x mempty <> pappend y mempty
+--   > 1. addValue (addValue y mempty) x  == addValue mempty x <> addValue mempty y
 --   > 2. x <> y == y <> x
 class Monoid m => StatMonoid m a where
   -- | Add one element to monoid accumulator. It's step of fold.

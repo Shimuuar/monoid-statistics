@@ -89,8 +89,8 @@ asWelfordMean = id
 
 instance Monoid WelfordMean where
   mempty = WelfordMean 0 0
-  mappend (WelfordMean 0 _) (WelfordMean 0 _)
-    = WelfordMean 0 0
+  mappend (WelfordMean 0 _) m = m
+  mappend m (WelfordMean 0 _) = m
   mappend (WelfordMean n x) (WelfordMean k y)
     = WelfordMean (n + k) ((x*n' + y*k') / (n' + k'))
     where
@@ -168,6 +168,7 @@ instance CalcVariance Variance where
 
 -- | Calculate minimum of sample
 newtype Min a = Min { calcMin :: Maybe a }
+              deriving (Show,Eq,Ord,Typeable,Data,Generic)
 
 instance Ord a => Monoid (Min a) where
   mempty = Min Nothing
@@ -182,6 +183,7 @@ instance (Ord a, a ~ a') => StatMonoid (Min a) a' where
 
 -- | Calculate maximum of sample
 newtype Max a = Max { calcMax :: Maybe a }
+              deriving (Show,Eq,Ord,Typeable,Data,Generic)
 
 instance Ord a => Monoid (Max a) where
   mempty = Max Nothing
@@ -198,7 +200,12 @@ instance (Ord a, a ~ a') => StatMonoid (Max a) a' where
 -- | Calculate minimum of sample of Doubles. For empty sample returns NaN. Any
 --   NaN encountered will be ignored.
 newtype MinD = MinD { calcMinD :: Double }
-              deriving (Show,Eq,Ord,Typeable,Data,Generic)
+              deriving (Show,Typeable,Data,Generic)
+
+instance Eq MinD where
+  MinD a == MinD b
+    | isNaN a && isNaN b = True
+    | otherwise          = a == b
 
 -- N.B. forall (x :: Double) (x <= NaN) == False
 instance Monoid MinD where
@@ -213,10 +220,17 @@ instance Monoid MinD where
 instance a ~ Double => StatMonoid MinD a where
   singletonMonoid = MinD
 
+
+
 -- | Calculate maximum of sample. For empty sample returns NaN. Any
 --   NaN encountered will be ignored.
 newtype MaxD = MaxD { calcMaxD :: Double }
-              deriving (Show,Eq,Ord,Typeable,Data,Generic)
+              deriving (Show,Typeable,Data,Generic)
+
+instance Eq MaxD where
+  MaxD a == MaxD b
+    | isNaN a && isNaN b = True
+    | otherwise          = a == b
 
 instance Monoid MaxD where
   mempty = MaxD (0/0)

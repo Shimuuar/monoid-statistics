@@ -37,3 +37,20 @@ Library
   Exposed-modules: Data.Monoid.Statistics
                    Data.Monoid.Statistics.Class
                    Data.Monoid.Statistics.Numeric
+
+test-suite tests
+  default-language: Haskell2010
+  type:             exitcode-stdio-1.0
+  ghc-options:      -Wall -threaded
+  -- Tests for math-functions' Sum require SSE2 on i686 to pass
+  -- (because of excess precision)
+  if arch(i386)
+    ghc-options:  -msse2
+  hs-source-dirs: tests
+  main-is:        Main.hs
+  other-modules:
+  build-depends: monoid-statistics
+               , base >=4.8 && <5
+               , tasty            >=0.11
+               , tasty-quickcheck >=0.9
+               , QuickCheck
