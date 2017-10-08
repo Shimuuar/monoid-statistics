@@ -14,8 +14,12 @@ module Data.Monoid.Statistics.Numeric (
   , Count
   , asCount
     -- ** Mean
+  , MeanKBN(..)
+  , asMeanKBN
   , WelfordMean(..)
   , asWelfordMean
+  , MeanKahan(..)
+  , asMeanKahan
     -- ** Variance
   , Variance(..)
   , asVariance
@@ -37,10 +41,12 @@ module Data.Monoid.Statistics.Numeric (
     -- $references
   ) where
 
+import Data.Monoid                  ((<>))
 import Data.Monoid.Statistics.Class
 import Data.Data                    (Typeable,Data)
 import Data.Vector.Unboxed          (Unbox)
 import Data.Vector.Unboxed.Deriving (derivingUnbox)
+import Numeric.Sum
 import GHC.Generics                 (Generic)
 
 ----------------------------------------------------------------
@@ -77,8 +83,65 @@ instance CalcCount (CountG Int) where
 
 ----------------------------------------------------------------
 
--- | Incremental calculation of mean. Algorithm is due to Welford
---   [Welford1962]
+-- | Incremental calculation of mean. Sum of elements is calculated
+--   using compensated Kahan summation.
+data MeanKahan = MeanKahan !Int !KahanSum
+             deriving (Show,Eq,Typeable,Data,Generic)
+
+asMeanKahan :: MeanKahan -> MeanKahan
+asMeanKahan = id
+
+instance Monoid MeanKahan where
+  mempty = MeanKahan 0 mempty
+  MeanKahan 0  _  `mappend` m               = m
+  m               `mappend` MeanKahan 0  _  = m
+  MeanKahan n1 s1 `mappend` MeanKahan n2 s2 = MeanKahan (n1+n2) (s1<>s2)
+
+instance Real a => StatMonoid MeanKahan a where
+  addValue (MeanKahan n m) x = MeanKahan (n+1) (addValue m x)
+
+instance CalcCount MeanKahan where
+  calcCount (MeanKahan n _) = n
+instance CalcMean MeanKahan where
+  calcMean (MeanKahan 0 _) = Nothing
+  calcMean (MeanKahan n s) = Just (kahan s / fromIntegral n)
+
+
+
+-- | Incremental calculation of mean. Sum of elements is calculated
+--   using Kahan-Babuška-Neumaier summation.
+data MeanKBN = MeanKBN !Int !KBNSum
+             deriving (Show,Eq,Typeable,Data,Generic)
+
+asMeanKBN :: MeanKBN -> MeanKBN
+asMeanKBN = id
+
+instance Monoid MeanKBN where
+  mempty = MeanKBN 0 mempty
+  MeanKBN 0  _  `mappend` m             = m
+  m             `mappend` MeanKBN 0  _  = m
+  MeanKBN n1 s1 `mappend` MeanKBN n2 s2 = MeanKBN (n1+n2) (s1<>s2)
+
+instance Real a => StatMonoid MeanKBN a where
+  addValue (MeanKBN n m) x = MeanKBN (n+1) (addValue m x)
+
+instance CalcCount MeanKBN where
+  calcCount (MeanKBN n _) = n
+instance CalcMean MeanKBN where
+  calcMean (MeanKBN 0 _) = Nothing
+  calcMean (MeanKBN n s) = Just (kbn s / fromIntegral n)
+
+
+
+-- | Incremental calculation of mean. One of algorithm's advantage is
+--   protection against double overflow:
+--
+--   > λ> calcMean $ asMeanKBN     $ reduceSample (replicate 100 1e308)
+--   > Just NaN
+--   > λ> calcMean $ asWelfordMean $ reduceSample (replicate 100 1e308)
+--   > Just 1.0e308
+--
+--   Algorithm is due to Welford [Welford1962]
 data WelfordMean = WelfordMean !Int    -- Number of entries
                                !Double -- Current mean
   deriving (Show,Eq,Typeable,Data,Generic)
@@ -99,6 +162,7 @@ instance Monoid WelfordMean where
   {-# INLINE mempty  #-}
   {-# INLINE mappend #-}
 
+-- | \[ s_n = s_{n-1} + \frac{x_n - s_{n-1}}{n} \]
 instance Real a => StatMonoid WelfordMean a where
   addValue (WelfordMean n m) !x
     = WelfordMean n' (m + (realToFrac x - m) / fromIntegral n')
@@ -330,6 +394,11 @@ derivingUnbox "CountG"
   [t| forall a. Unbox a => CountG a -> a |]
   [| calcCountN |]
   [| CountG     |]
+
+derivingUnbox "MeanKBN"
+  [t| MeanKBN -> (Int,Double,Double) |]
+  [| \(MeanKBN a (KBNSum b c)) -> (a,b,c)   |]
+  [| \(a,b,c) -> MeanKBN a (KBNSum b c) |]
 
 derivingUnbox "WelfordMean"
   [t| WelfordMean -> (Int,Double) |]

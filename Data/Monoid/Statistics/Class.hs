@@ -6,6 +6,8 @@
 {-# LANGUAGE RankNTypes            #-}
 {-# LANGUAGE TemplateHaskell       #-}
 {-# LANGUAGE TypeFamilies          #-}
+--
+{-# OPTIONS_GHC -fno-warn-orphans #-}
 -- |
 -- Module     : Data.Monoid.Statistics
 -- Copyright  : Copyright (c) 2010,2017, Alexey Khudyakov <alexey.skladnoy@gmail.com>
@@ -22,12 +24,13 @@ module Data.Monoid.Statistics.Class
   , Pair(..)
   ) where
 
+import           Data.Data    (Typeable,Data)
 import           Data.Monoid
 import           Data.Vector.Unboxed          (Unbox)
 import           Data.Vector.Unboxed.Deriving (derivingUnbox)
 import qualified Data.Foldable       as F
 import qualified Data.Vector.Generic as G
-import Data.Data    (Typeable,Data)
+import           Numeric.Sum
 import GHC.Generics (Generic)
 
 -- | This type class is used to express parallelizable constant space
@@ -50,7 +53,7 @@ import GHC.Generics (Generic)
 --
 --   Instance must satisfy following laws. If floating point
 --   arithmetics is used then equality should be understood as
---   approximate.
+--   approximate. 
 --
 --   > 1. addValue (addValue y mempty) x  == addValue mempty x <> addValue mempty y
 --   > 2. x <> y == y <> x
@@ -82,6 +85,21 @@ instance (Num a, a ~ a') => StatMonoid (Sum a) a' where
 
 instance (Num a, a ~ a') => StatMonoid (Product a) a' where
   singletonMonoid = Product
+
+instance Monoid KahanSum where
+  mempty        = zero
+  mappend s1 s2 = add s1 (kahan s2)
+instance Real a => StatMonoid KahanSum a where
+  addValue m x = add m (realToFrac x)
+  {-# INLINE addValue #-}
+
+instance Monoid KBNSum where
+  mempty        = zero
+  mappend s1 s2 = add s1 (kbn s2)
+instance Real a => StatMonoid KBNSum a where
+  addValue m x = add m (realToFrac x)
+  {-# INLINE addValue #-}
+
 
 ----------------------------------------------------------------
 -- Generic monoids

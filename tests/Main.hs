@@ -1,9 +1,10 @@
 {-# LANGUAGE LambdaCase          #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 --
-{-# OPTIONS_GHC -Wno-orphans #-}
+{-# OPTIONS_GHC -fno-warn-orphans #-}
 import Data.Monoid
 import Data.Typeable
+import Numeric.Sum
 import Test.Tasty
 import Test.Tasty.QuickCheck
 
@@ -121,6 +122,20 @@ main = defaultMain $ testGroup "monoid-statistics"
       , p_addValue1 (T :: T Double)
       -- , p_addValue2 (T :: T Double)
       ]
+  , testType (T :: T MeanKBN)
+      [ p_memptyIsNeutral
+      -- , p_associativity
+      -- , p_commutativity
+      , p_addValue1 (T :: T Double)
+      , p_addValue2 (T :: T Double)
+      ]
+  , testType (T :: T MeanKahan)
+      [ p_memptyIsNeutral
+      -- , p_associativity
+      -- , p_commutativity
+      , p_addValue1 (T :: T Double)
+      -- , p_addValue2 (T :: T Double)
+      ]
   , testType (T :: T Variance)
       [ p_memptyIsNeutral
       -- , p_associativity
@@ -172,3 +187,21 @@ instance Arbitrary Variance where
       m             <- arbitrary
       NonNegative s <- arbitrary
       return $ Variance n m s
+
+instance Arbitrary MeanKBN where
+  arbitrary = arbitrary >>= \case
+    NonNegative 0 -> return mempty
+    NonNegative n -> do
+      x1 <- arbitrary
+      x2 <- arbitrary
+      x3 <- arbitrary
+      return $ MeanKBN n (((zero `add` x1) `add` x2) `add` x3)
+
+instance Arbitrary MeanKahan where
+  arbitrary = arbitrary >>= \case
+    NonNegative 0 -> return mempty
+    NonNegative n -> do
+      x1 <- arbitrary
+      x2 <- arbitrary
+      x3 <- arbitrary
+      return $ MeanKahan n (((zero `add` x1) `add` x2) `add` x3)
