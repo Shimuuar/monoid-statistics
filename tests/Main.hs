@@ -1,6 +1,5 @@
 {-# LANGUAGE LambdaCase          #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TypeApplications    #-}
 --
 {-# OPTIONS_GHC -Wno-orphans #-}
 import Data.Monoid
