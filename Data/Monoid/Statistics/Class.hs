@@ -79,6 +79,47 @@ reduceSampleVec :: (G.Vector v a, StatMonoid m a) => v a -> m
 reduceSampleVec = G.foldl' addValue mempty
 {-# INLINE reduceSampleVec #-}
 
+instance ( StatMonoid m1 a
+         , StatMonoid m2 a
+         ) => StatMonoid (m1,m2) a where
+  addValue (!m1, !m2) a =
+    let !m1' = addValue m1 a
+        !m2' = addValue m2 a
+    in (m1', m2')
+  singletonMonoid a = ( singletonMonoid a
+                      , singletonMonoid a
+                      )
+
+instance ( StatMonoid m1 a
+         , StatMonoid m2 a
+         , StatMonoid m3 a
+         ) => StatMonoid (m1,m2,m3) a where
+  addValue (!m1, !m2, !m3) a =
+    let !m1' = addValue m1 a
+        !m2' = addValue m2 a
+        !m3' = addValue m3 a
+    in (m1', m2', m3')
+  singletonMonoid a = ( singletonMonoid a
+                      , singletonMonoid a
+                      , singletonMonoid a
+                      )
+
+instance ( StatMonoid m1 a
+         , StatMonoid m2 a
+         , StatMonoid m3 a
+         , StatMonoid m4 a
+         ) => StatMonoid (m1,m2,m3,m4) a where
+  addValue (!m1, !m2, !m3, !m4) a =
+    let !m1' = addValue m1 a
+        !m2' = addValue m2 a
+        !m3' = addValue m3 a
+        !m4' = addValue m4 a
+    in (m1', m2', m3', m4')
+  singletonMonoid a = ( singletonMonoid a
+                      , singletonMonoid a
+                      , singletonMonoid a
+                      , singletonMonoid a
+                      )
 
 instance (Num a, a ~ a') => StatMonoid (Sum a) a' where
   singletonMonoid = Sum
