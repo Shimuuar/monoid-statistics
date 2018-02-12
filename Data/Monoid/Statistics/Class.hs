@@ -24,8 +24,9 @@ module Data.Monoid.Statistics.Class
   , Pair(..)
   ) where
 
-import           Data.Data    (Typeable,Data)
-import           Data.Monoid
+import           Data.Data       (Typeable,Data)
+import           Data.Monoid     hiding ((<>))
+import           Data.Semigroup  (Semigroup(..))
 import           Data.Vector.Unboxed          (Unbox)
 import           Data.Vector.Unboxed.Deriving (derivingUnbox)
 import qualified Data.Foldable       as F
@@ -55,14 +56,14 @@ import qualified Data.Vector.Generic.Mutable -- Needed for GHC7.4
 --
 --   Instance must satisfy following laws. If floating point
 --   arithmetics is used then equality should be understood as
---   approximate. 
+--   approximate.
 --
 --   > 1. addValue (addValue y mempty) x  == addValue mempty x <> addValue mempty y
 --   > 2. x <> y == y <> x
 class Monoid m => StatMonoid m a where
   -- | Add one element to monoid accumulator. It's step of fold.
   addValue :: m -> a -> m
-  addValue m a = m <> singletonMonoid a
+  addValue m a = m `mappend` singletonMonoid a
   {-# INLINE addValue #-}
   -- | State of accumulator corresponding to 1-element sample.
   singletonMonoid :: a -> m
@@ -129,6 +130,8 @@ instance (Num a, a ~ a') => StatMonoid (Sum a) a' where
 instance (Num a, a ~ a') => StatMonoid (Product a) a' where
   singletonMonoid = Product
 
+instance Semigroup KahanSum where
+  (<>) = mappend
 instance Monoid KahanSum where
   mempty        = zero
   mappend s1 s2 = add s1 (kahan s2)
@@ -136,6 +139,8 @@ instance Real a => StatMonoid KahanSum a where
   addValue m x = add m (realToFrac x)
   {-# INLINE addValue #-}
 
+instance Semigroup KBNSum where
+  (<>) = mappend
 instance Monoid KBNSum where
   mempty        = zero
   mappend s1 s2 = add s1 (kbn s2)
@@ -152,10 +157,13 @@ instance Real a => StatMonoid KBNSum a where
 data Pair a b = Pair !a !b
               deriving (Show,Eq,Ord,Typeable,Data,Generic)
 
+instance (Semigroup a, Semigroup b) => Semigroup (Pair a b) where
+  Pair x y <> Pair x' y' = Pair (x <> x') (y <> y')
+  {-# INLINABLE (<>) #-}
+
 instance (Monoid a, Monoid b) => Monoid (Pair a b) where
   mempty = Pair mempty mempty
-  mappend (Pair x y) (Pair x' y') =
-    Pair (x <> x') (y <> y')
+  Pair x y `mappend` Pair x' y' = Pair (x `mappend` x') (y `mappend` y')
   {-# INLINABLE mempty  #-}
   {-# INLINABLE mappend #-}
 

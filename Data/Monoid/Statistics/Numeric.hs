@@ -41,7 +41,8 @@ module Data.Monoid.Statistics.Numeric (
     -- $references
   ) where
 
-import Data.Monoid                  ((<>),Monoid(..))
+import Data.Semigroup               (Semigroup(..))
+import Data.Monoid                  (Monoid(..))
 import Data.Monoid.Statistics.Class
 import Data.Data                    (Typeable,Data)
 import Data.Vector.Unboxed          (Unbox)
@@ -66,6 +67,10 @@ type Count = CountG Int
 -- | Type restricted 'id'
 asCount :: CountG a -> CountG a
 asCount = id
+
+instance Integral a => Semigroup (CountG a) where
+  (<>) = mappend
+  {-# INLINE (<>) #-}
 
 instance Integral a => Monoid (CountG a) where
   mempty                      = CountG 0
@@ -95,11 +100,16 @@ data MeanKahan = MeanKahan !Int !KahanSum
 asMeanKahan :: MeanKahan -> MeanKahan
 asMeanKahan = id
 
+
+instance Semigroup MeanKahan where
+  (<>) = mappend
+  {-# INLINE (<>) #-}
+
 instance Monoid MeanKahan where
   mempty = MeanKahan 0 mempty
   MeanKahan 0  _  `mappend` m               = m
   m               `mappend` MeanKahan 0  _  = m
-  MeanKahan n1 s1 `mappend` MeanKahan n2 s2 = MeanKahan (n1+n2) (s1<>s2)
+  MeanKahan n1 s1 `mappend` MeanKahan n2 s2 = MeanKahan (n1+n2) (s1 `mappend` s2)
 
 instance Real a => StatMonoid MeanKahan a where
   addValue (MeanKahan n m) x = MeanKahan (n+1) (addValue m x)
@@ -120,11 +130,16 @@ data MeanKBN = MeanKBN !Int !KBNSum
 asMeanKBN :: MeanKBN -> MeanKBN
 asMeanKBN = id
 
+
+instance Semigroup MeanKBN where
+  (<>) = mappend
+  {-# INLINE (<>) #-}
+
 instance Monoid MeanKBN where
   mempty = MeanKBN 0 mempty
   MeanKBN 0  _  `mappend` m             = m
   m             `mappend` MeanKBN 0  _  = m
-  MeanKBN n1 s1 `mappend` MeanKBN n2 s2 = MeanKBN (n1+n2) (s1<>s2)
+  MeanKBN n1 s1 `mappend` MeanKBN n2 s2 = MeanKBN (n1+n2) (s1 `mappend` s2)
 
 instance Real a => StatMonoid MeanKBN a where
   addValue (MeanKBN n m) x = MeanKBN (n+1) (addValue m x)
@@ -153,6 +168,10 @@ data WelfordMean = WelfordMean !Int    -- Number of entries
 -- | Type restricted 'id'
 asWelfordMean :: WelfordMean -> WelfordMean
 asWelfordMean = id
+
+instance Semigroup WelfordMean where
+  (<>) = mappend
+  {-# INLINE (<>) #-}
 
 instance Monoid WelfordMean where
   mempty = WelfordMean 0 0
@@ -194,6 +213,10 @@ data Variance = Variance {-# UNPACK #-} !Int    --  Number of elements in the sa
 asVariance :: Variance -> Variance
 asVariance = id
 {-# INLINE asVariance #-}
+
+instance Semigroup Variance where
+  (<>) = mappend
+  {-# INLINE (<>) #-}
 
 -- | Iterative algorithm for calculation of variance [Chan1979]
 instance Monoid Variance where
@@ -238,6 +261,10 @@ instance CalcVariance Variance where
 newtype Min a = Min { calcMin :: Maybe a }
               deriving (Show,Eq,Ord,Typeable,Data,Generic)
 
+instance Ord a => Semigroup (Min a) where
+  (<>) = mappend
+  {-# INLINE (<>) #-}
+
 instance Ord a => Monoid (Min a) where
   mempty = Min Nothing
   Min (Just a) `mappend` Min (Just b) = Min (Just $! min a b)
@@ -252,6 +279,10 @@ instance (Ord a, a ~ a') => StatMonoid (Min a) a' where
 -- | Calculate maximum of sample
 newtype Max a = Max { calcMax :: Maybe a }
               deriving (Show,Eq,Ord,Typeable,Data,Generic)
+
+instance Ord a => Semigroup (Max a) where
+  (<>) = mappend
+  {-# INLINE (<>) #-}
 
 instance Ord a => Monoid (Max a) where
   mempty = Max Nothing
@@ -274,6 +305,10 @@ instance Eq MinD where
   MinD a == MinD b
     | isNaN a && isNaN b = True
     | otherwise          = a == b
+
+instance Semigroup MinD where
+  (<>) = mappend
+  {-# INLINE (<>) #-}
 
 -- N.B. forall (x :: Double) (x <= NaN) == False
 instance Monoid MinD where
@@ -300,6 +335,10 @@ instance Eq MaxD where
     | isNaN a && isNaN b = True
     | otherwise          = a == b
 
+instance Semigroup MaxD where
+  (<>) = mappend
+  {-# INLINE (<>) #-}
+
 instance Monoid MaxD where
   mempty = MaxD (0/0)
   mappend (MaxD x) (MaxD y)
@@ -324,6 +363,10 @@ data BinomAcc = BinomAcc { binomAccSuccess :: !Int
 -- | Type restricted 'id'
 asBinomAcc :: BinomAcc -> BinomAcc
 asBinomAcc = id
+
+instance Semigroup BinomAcc where
+  (<>) = mappend
+  {-# INLINE (<>) #-}
 
 instance Monoid BinomAcc where
   mempty = BinomAcc 0 0
