@@ -41,13 +41,17 @@ module Data.Monoid.Statistics.Numeric (
     -- $references
   ) where
 
-import Data.Monoid                  ((<>))
+import Data.Monoid                  ((<>),Monoid(..))
 import Data.Monoid.Statistics.Class
 import Data.Data                    (Typeable,Data)
 import Data.Vector.Unboxed          (Unbox)
 import Data.Vector.Unboxed.Deriving (derivingUnbox)
 import Numeric.Sum
 import GHC.Generics                 (Generic)
+-- COMPAT
+import qualified Data.Vector.Generic         -- Needed for GHC7.4
+import qualified Data.Vector.Generic.Mutable -- Needed for GHC7.4
+
 
 ----------------------------------------------------------------
 -- Statistical monoids

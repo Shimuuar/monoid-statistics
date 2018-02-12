@@ -1,4 +1,3 @@
-{-# LANGUAGE LambdaCase          #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 --
 {-# OPTIONS_GHC -fno-warn-orphans #-}
@@ -67,7 +66,7 @@ p_addValue2 _ _
 ----------------------------------------------------------------
 
 testType :: forall m. Typeable m => T m -> [T m -> TestTree] -> TestTree
-testType t props = testGroup (show (typeRep (Proxy :: Proxy m)))
+testType t props = testGroup (show (typeOf (undefined :: m)))
                              (fmap ($ t) props)
 
 
@@ -153,19 +152,19 @@ instance (Arbitrary a, Num a, Ord a) => Arbitrary (CountG a) where
     return (CountG n)
 
 instance (Arbitrary a) => Arbitrary (Max a) where
-  arbitrary = Max <$> arbitrary
+  arbitrary = fmap Max arbitrary
 
 instance (Arbitrary a) => Arbitrary (Min a) where
-  arbitrary = Min <$> arbitrary
+  arbitrary = fmap Min arbitrary
 
 instance Arbitrary MinD where
-  arbitrary = frequency [ (1, pure mempty)
-                        , (4, MinD <$> arbitrary)
+  arbitrary = frequency [ (1, return mempty)
+                        , (4, fmap MinD arbitrary)
                         ]
 
 instance Arbitrary MaxD where
-  arbitrary = frequency [ (1, pure mempty)
-                        , (4, MaxD <$> arbitrary)
+  arbitrary = frequency [ (1, return mempty)
+                        , (4, fmap MaxD arbitrary)
                         ]
 
 instance Arbitrary BinomAcc where
@@ -175,13 +174,13 @@ instance Arbitrary BinomAcc where
     return $ BinomAcc nSucc (nFail + nSucc)
 
 instance Arbitrary WelfordMean where
-  arbitrary = arbitrary >>= \case
+  arbitrary = arbitrary >>= \x -> case x of
     NonNegative 0 -> return mempty
     NonNegative n -> do m <- arbitrary
                         return (WelfordMean n m)
 
 instance Arbitrary Variance where
-  arbitrary = arbitrary >>= \case
+  arbitrary = arbitrary >>= \x -> case x of
     NonNegative 0 -> return mempty
     NonNegative n -> do
       m             <- arbitrary
@@ -189,7 +188,7 @@ instance Arbitrary Variance where
       return $ Variance n m s
 
 instance Arbitrary MeanKBN where
-  arbitrary = arbitrary >>= \case
+  arbitrary = arbitrary >>= \x -> case x of
     NonNegative 0 -> return mempty
     NonNegative n -> do
       x1 <- arbitrary
@@ -198,7 +197,7 @@ instance Arbitrary MeanKBN where
       return $ MeanKBN n (((zero `add` x1) `add` x2) `add` x3)
 
 instance Arbitrary MeanKahan where
-  arbitrary = arbitrary >>= \case
+  arbitrary = arbitrary >>= \x -> case x of
     NonNegative 0 -> return mempty
     NonNegative n -> do
       x1 <- arbitrary

@@ -32,6 +32,8 @@ import qualified Data.Foldable       as F
 import qualified Data.Vector.Generic as G
 import           Numeric.Sum
 import GHC.Generics (Generic)
+-- COMPAT
+import qualified Data.Vector.Generic.Mutable -- Needed for GHC7.4
 
 -- | This type class is used to express parallelizable constant space
 --   algorithms for calculation of statistics. By definitions
