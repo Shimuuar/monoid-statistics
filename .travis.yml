@@ -70,4 +70,4 @@ script:
   - cabal new-build -w ${HC} --disable-tests --disable-benchmarks all
   # build & run tests.
   - cabal new-build -w ${HC} ${TEST} all;
-  - "[ x--enable-tests = $TEST ] && cabal new-test  -w ${HC} --enable-tests all || :"
+  - "[ x--enable-tests = x$TEST ] && cabal new-test  -w ${HC} --enable-tests all || :"
