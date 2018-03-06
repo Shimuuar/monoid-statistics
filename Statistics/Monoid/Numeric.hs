@@ -4,10 +4,12 @@
 {-# LANGUAGE FlexibleContexts      #-}
 {-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE RankNTypes            #-}
+{-# LANGUAGE ScopedTypeVariables   #-}
 {-# LANGUAGE TemplateHaskell       #-}
 {-# LANGUAGE TypeFamilies          #-}
 {-# LANGUAGE ViewPatterns          #-}
+-- |
+-- Monoids for calculating various statistics in constant space
 module Statistics.Monoid.Numeric (
     -- * Mean & Variance
     -- ** Number of elements
@@ -17,10 +19,6 @@ module Statistics.Monoid.Numeric (
     -- ** Mean
   , MeanKBN(..)
   , asMeanKBN
-  , WelfordMean(..)
-  , asWelfordMean
-  , MeanKahan(..)
-  , asMeanKahan
     -- ** Variance
   , Variance(..)
   , asVariance
@@ -94,33 +92,6 @@ instance CalcCount (CountG Int) where
 
 ----------------------------------------------------------------
 
--- | Incremental calculation of mean. Sum of elements is calculated
---   using compensated Kahan summation.
-data MeanKahan = MeanKahan !Int !KahanSum
-             deriving (Show,Eq,Typeable,Data,Generic)
-
-asMeanKahan :: MeanKahan -> MeanKahan
-asMeanKahan = id
-
-
-instance Semigroup MeanKahan where
-  (<>) = mappend
-  {-# INLINE (<>) #-}
-
-instance Monoid MeanKahan where
-  mempty = MeanKahan 0 mempty
-  MeanKahan 0  _  `mappend` m               = m
-  m               `mappend` MeanKahan 0  _  = m
-  MeanKahan n1 s1 `mappend` MeanKahan n2 s2 = MeanKahan (n1+n2) (s1 `mappend` s2)
-
-instance Real a => StatMonoid MeanKahan a where
-  addValue (MeanKahan n m) x = MeanKahan (n+1) (addValue m x)
-
-instance CalcCount MeanKahan where
-  calcCount (MeanKahan n _) = n
-instance CalcMean MeanKahan where
-  calcMean (MeanKahan 0 _) = Nothing
-  calcMean (MeanKahan n s) = Just (kahan s / fromIntegral n)
 
 
 
@@ -154,52 +125,6 @@ instance CalcMean MeanKBN where
 
 
 
--- | Incremental calculation of mean. One of algorithm's advantage is
---   protection against double overflow:
---
---   > λ> calcMean $ asMeanKBN     $ reduceSample (replicate 100 1e308)
---   > Just NaN
---   > λ> calcMean $ asWelfordMean $ reduceSample (replicate 100 1e308)
---   > Just 1.0e308
---
---   Algorithm is due to Welford [Welford1962]
-data WelfordMean = WelfordMean !Int    -- Number of entries
-                               !Double -- Current mean
-  deriving (Show,Eq,Typeable,Data,Generic)
-
--- | Type restricted 'id'
-asWelfordMean :: WelfordMean -> WelfordMean
-asWelfordMean = id
-
-instance Semigroup WelfordMean where
-  (<>) = mappend
-  {-# INLINE (<>) #-}
-
-instance Monoid WelfordMean where
-  mempty = WelfordMean 0 0
-  mappend (WelfordMean 0 _) m = m
-  mappend m (WelfordMean 0 _) = m
-  mappend (WelfordMean n x) (WelfordMean k y)
-    = WelfordMean (n + k) ((x*n' + y*k') / (n' + k'))
-    where
-      n' = fromIntegral n
-      k' = fromIntegral k
-  {-# INLINE mempty  #-}
-  {-# INLINE mappend #-}
-
--- | \[ s_n = s_{n-1} + \frac{x_n - s_{n-1}}{n} \]
-instance Real a => StatMonoid WelfordMean a where
-  addValue (WelfordMean n m) !x
-    = WelfordMean n' (m + (realToFrac x - m) / fromIntegral n')
-    where
-      n' = n+1
-  {-# INLINE addValue #-}
-
-instance CalcCount WelfordMean where
-  calcCount (WelfordMean n _) = n
-instance CalcMean WelfordMean where
-  calcMean (WelfordMean 0 _) = Nothing
-  calcMean (WelfordMean _ m) = Just m
 
 
 
@@ -386,52 +311,6 @@ instance StatMonoid BinomAcc Bool where
 
 
 ----------------------------------------------------------------
--- Ad-hoc type class
-----------------------------------------------------------------
-
--- | Accumulator could be used to evaluate number of elements in
---   sample.
-class CalcCount m where
-  -- | Number of elements in sample
-  calcCount :: m -> Int
-
--- | Monoids which could be used to calculate sample mean:
---
---   \[ \bar{x} = \frac{1}{N}\sum_{i=1}^N{x_i} \]
-class CalcMean m where
-  -- | Returns @Nothing@ if there isn't enough data to make estimate.
-  calcMean :: m -> Maybe Double
-
--- | Monoids which could be used to calculate sample variance. Both
---   methods return @Nothing@ if there isn't enough data to make
---   estimate.
-class CalcVariance m where
-  -- | Calculate unbiased estimate of variance:
-  --
-  --   \[ \sigma^2 = \frac{1}{N-1}\sum_{i=1}^N(x_i - \bar{x})^2 \]
-  calcVariance   :: m -> Maybe Double
-  -- | Calculate maximum likelihood estimate of variance:
-  --
-  --   \[ \sigma^2 = \frac{1}{N}\sum_{i=1}^N(x_i - \bar{x})^2 \]
-  calcVarianceML :: m -> Maybe Double
-
--- | Calculate sample standard deviation from unbiased estimation of
---   variance:
---
---   \[ \sigma = \sqrt{\frac{1}{N-1}\sum_{i=1}^N(x_i - \bar{x})^2 } \]
-calcStddev :: CalcVariance m => m -> Maybe Double
-calcStddev = fmap sqrt . calcVariance
-
--- | Calculate sample standard deviation from maximum likelihood
---   estimation of variance:
---
---   \[ \sigma = \sqrt{\frac{1}{N}\sum_{i=1}^N(x_i - \bar{x})^2 } \]
-calcStddevML :: CalcVariance m => m -> Maybe Double
-calcStddevML = fmap sqrt . calcVarianceML
-
-
-
-----------------------------------------------------------------
 -- Helpers
 ----------------------------------------------------------------
 
@@ -453,11 +332,6 @@ derivingUnbox "MeanKBN"
   [t| MeanKBN -> (Int,Double,Double) |]
   [| \(MeanKBN a (KBNSum b c)) -> (a,b,c)   |]
   [| \(a,b,c) -> MeanKBN a (KBNSum b c) |]
-
-derivingUnbox "WelfordMean"
-  [t| WelfordMean -> (Int,Double) |]
-  [| \(WelfordMean a b) -> (a,b)  |]
-  [| \(a,b) -> WelfordMean a b    |]
 
 derivingUnbox "Variance"
   [t| Variance -> (Int,Double,Double) |]

@@ -8,7 +8,7 @@ import Test.Tasty
 import Test.Tasty.QuickCheck
 
 import Statistics.Monoid
-
+import Statistics.Monoid.Extra
 
 data T a = T
 

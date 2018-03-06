@@ -11,6 +11,7 @@ import System.Random.MWC
 --
 import Numeric.Sum
 import Statistics.Monoid
+import Statistics.Monoid.Extra
 
 
 sampleD10,sampleD100,sampleD1000 :: U.Vector Double

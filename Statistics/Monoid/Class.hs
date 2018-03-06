@@ -18,6 +18,12 @@ module Statistics.Monoid.Class
     StatMonoid(..)
   , reduceSample
   , reduceSampleVec
+    -- * Ad-hoc type classes for central moments
+  , CalcCount(..)
+  , CalcMean(..)
+  , CalcVariance(..)
+  , calcStddev
+  , calcStddevML
     -- * Data types
   , Pair(..)
   ) where
@@ -135,6 +141,52 @@ instance Real a => StatMonoid KahanSum a where
 instance Real a => StatMonoid KBNSum a where
   addValue m x = add m (realToFrac x)
   {-# INLINE addValue #-}
+
+
+----------------------------------------------------------------
+-- Ad-hoc type class
+----------------------------------------------------------------
+
+-- | Accumulator could be used to evaluate number of elements in
+--   sample.
+class CalcCount m where
+  -- | Number of elements in sample
+  calcCount :: m -> Int
+
+-- | Monoids which could be used to calculate sample mean:
+--
+--   \[ \bar{x} = \frac{1}{N}\sum_{i=1}^N{x_i} \]
+class CalcMean m where
+  -- | Returns @Nothing@ if there isn't enough data to make estimate.
+  calcMean :: m -> Maybe Double
+
+-- | Monoids which could be used to calculate sample variance. Both
+--   methods return @Nothing@ if there isn't enough data to make
+--   estimate.
+class CalcVariance m where
+  -- | Calculate unbiased estimate of variance:
+  --
+  --   \[ \sigma^2 = \frac{1}{N-1}\sum_{i=1}^N(x_i - \bar{x})^2 \]
+  calcVariance   :: m -> Maybe Double
+  -- | Calculate maximum likelihood estimate of variance:
+  --
+  --   \[ \sigma^2 = \frac{1}{N}\sum_{i=1}^N(x_i - \bar{x})^2 \]
+  calcVarianceML :: m -> Maybe Double
+
+-- | Calculate sample standard deviation from unbiased estimation of
+--   variance:
+--
+--   \[ \sigma = \sqrt{\frac{1}{N-1}\sum_{i=1}^N(x_i - \bar{x})^2 } \]
+calcStddev :: CalcVariance m => m -> Maybe Double
+calcStddev = fmap sqrt . calcVariance
+
+-- | Calculate sample standard deviation from maximum likelihood
+--   estimation of variance:
+--
+--   \[ \sigma = \sqrt{\frac{1}{N}\sum_{i=1}^N(x_i - \bar{x})^2 } \]
+calcStddevML :: CalcVariance m => m -> Maybe Double
+calcStddevML = fmap sqrt . calcVarianceML
+
 
 
 ----------------------------------------------------------------
