@@ -8,7 +8,7 @@
 {-# LANGUAGE TemplateHaskell       #-}
 {-# LANGUAGE TypeFamilies          #-}
 {-# LANGUAGE ViewPatterns          #-}
-module Data.Monoid.Statistics.Numeric (
+module Statistics.Monoid.Numeric (
     -- * Mean & Variance
     -- ** Number of elements
     CountG(..)
@@ -44,12 +44,13 @@ module Data.Monoid.Statistics.Numeric (
 
 import Data.Semigroup               (Semigroup(..))
 import Data.Monoid                  (Monoid(..))
-import Data.Monoid.Statistics.Class
 import Data.Data                    (Typeable,Data)
 import Data.Vector.Unboxed          (Unbox)
 import Data.Vector.Unboxed.Deriving (derivingUnbox)
 import Numeric.Sum
 import GHC.Generics                 (Generic)
+
+import Statistics.Monoid.Class
 -- COMPAT
 import qualified Data.Vector.Generic         -- Needed for GHC7.4
 import qualified Data.Vector.Generic.Mutable -- Needed for GHC7.4

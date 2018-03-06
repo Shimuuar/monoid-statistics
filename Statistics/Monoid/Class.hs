@@ -6,8 +6,6 @@
 {-# LANGUAGE RankNTypes            #-}
 {-# LANGUAGE TemplateHaskell       #-}
 {-# LANGUAGE TypeFamilies          #-}
---
-{-# OPTIONS_GHC -fno-warn-orphans #-}
 -- |
 -- Module     : Data.Monoid.Statistics
 -- Copyright  : Copyright (c) 2010,2017, Alexey Khudyakov <alexey.skladnoy@gmail.com>
@@ -15,7 +13,7 @@
 -- Maintainer : Alexey Khudyakov <alexey.skladnoy@gmail.com>
 -- Stability  : experimental
 --
-module Data.Monoid.Statistics.Class
+module Statistics.Monoid.Class
   ( -- * Type class and helpers
     StatMonoid(..)
   , reduceSample

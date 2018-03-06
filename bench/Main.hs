@@ -10,7 +10,7 @@ import Criterion.Main
 import System.Random.MWC
 --
 import Numeric.Sum
-import Data.Monoid.Statistics
+import Statistics.Monoid
 
 
 sampleD10,sampleD100,sampleD1000 :: U.Vector Double

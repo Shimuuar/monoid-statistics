@@ -7,7 +7,7 @@ import Numeric.Sum
 import Test.Tasty
 import Test.Tasty.QuickCheck
 
-import Data.Monoid.Statistics
+import Statistics.Monoid
 
 
 data T a = T
