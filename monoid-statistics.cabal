@@ -1,5 +1,5 @@
 Name:           monoid-statistics
-Version:        1.0.0
+Version:        1.1.0
 Cabal-Version:  >= 1.10
 License:        BSD3
 License-File:   LICENSE
@@ -31,7 +31,7 @@ Library
   Build-Depends:    base            >=4.5  && <5
                   , vector          >=0.11 && <1
                   , vector-th-unbox >=0.2.1.6
-                  , math-functions  >=0.2.1.0
+                  , math-functions  >=0.3
   if impl(ghc < 7.6)
     Build-depends: ghc-prim
   if impl(ghc < 8.0)
@@ -55,7 +55,7 @@ test-suite tests
   Other-Modules:
   Build-Depends: monoid-statistics
                , base             >=4.5 && <5
-               , math-functions   >=0.2.1
+               , math-functions   >=0.3
                , tasty            >=0.11
                , tasty-quickcheck >=0.9
                , QuickCheck
@@ -69,6 +69,6 @@ benchmark monoid-stat-bench
   Build-Depends: monoid-statistics
                , base           >=4.5  && <5
                , vector         >=0.11 && <1
-               , math-functions >=0.2.1
+               , math-functions >=0.3
                , mwc-random     >=0.13
                , criterion
