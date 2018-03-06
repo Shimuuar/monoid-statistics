@@ -7,6 +7,7 @@
 {-# LANGUAGE RankNTypes            #-}
 {-# LANGUAGE TemplateHaskell       #-}
 {-# LANGUAGE TypeFamilies          #-}
+{-# LANGUAGE ViewPatterns          #-}
 module Data.Monoid.Statistics.Numeric (
     -- * Mean & Variance
     -- ** Number of elements
@@ -234,6 +235,11 @@ instance Monoid Variance where
   {-# INLINE mappend #-}
 
 instance Real a => StatMonoid Variance a where
+  addValue (Variance 0 _ _) x = singletonMonoid x
+  addValue (Variance n t s) (realToFrac -> x)
+    = Variance (n + 1) (t + x) (s + sqr (t  - n' * x) / (n' * (n'+1)))
+    where
+      n' = fromIntegral n
   singletonMonoid x = Variance 1 (realToFrac x) 0
   {-# INLINE singletonMonoid #-}
 
