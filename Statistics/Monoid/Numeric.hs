@@ -17,6 +17,8 @@ module Statistics.Monoid.Numeric (
   , Count
   , asCount
     -- ** Mean
+  , Mean
+  , asMean
   , MeanKBN(..)
   , asMeanKBN
     -- ** Variance
@@ -92,8 +94,12 @@ instance CalcCount (CountG Int) where
 
 ----------------------------------------------------------------
 
+-- | Type alias for currently recommended algorithms for calculation
+--   of mean. It should be default choice
+type Mean = MeanKBN
 
-
+asMean :: Mean -> Mean
+asMean = id
 
 -- | Incremental calculation of mean. Sum of elements is calculated
 --   using Kahan-Babuška-Neumaier summation.
