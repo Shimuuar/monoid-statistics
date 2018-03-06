@@ -130,20 +130,10 @@ instance (Num a, a ~ a') => StatMonoid (Sum a) a' where
 instance (Num a, a ~ a') => StatMonoid (Product a) a' where
   singletonMonoid = Product
 
-instance Semigroup KahanSum where
-  (<>) = mappend
-instance Monoid KahanSum where
-  mempty        = zero
-  mappend s1 s2 = add s1 (kahan s2)
 instance Real a => StatMonoid KahanSum a where
   addValue m x = add m (realToFrac x)
   {-# INLINE addValue #-}
 
-instance Semigroup KBNSum where
-  (<>) = mappend
-instance Monoid KBNSum where
-  mempty        = zero
-  mappend s1 s2 = add s1 (kbn s2)
 instance Real a => StatMonoid KBNSum a where
   addValue m x = add m (realToFrac x)
   {-# INLINE addValue #-}
