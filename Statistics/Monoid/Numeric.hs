@@ -136,6 +136,18 @@ instance CalcMean MeanKBN where
 
 ----------------------------------------------------------------
 
+-- | This is algorithm for estimation of mean and variance of sample
+--   which uses modified Welford algorithm. It uses KBN summation and
+--   provides approximately 2 additional decimal digits
+data VarWelfordKBN = VarWelfordKBN
+  {-# UNPACK #-} !Int    --  Number of elements in the sample
+  {-# UNPACK #-} !KBNSum -- Current sum of elements of sample
+  {-# UNPACK #-} !KBNSum -- Current sum of squares of deviations from current mean
+
+asVarWelfordKBN :: VarWelfordKBN -> VarWelfordKBN
+asVarWelfordKBN = id
+
+  
 -- | Incremental algorithms for calculation the standard deviation.
 data Variance = Variance {-# UNPACK #-} !Int    --  Number of elements in the sample
                          {-# UNPACK #-} !Double -- Current sum of elements of sample
