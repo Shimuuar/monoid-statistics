@@ -236,7 +236,7 @@ instance Ord a => Semigroup (Max a) where
 
 instance Ord a => Monoid (Max a) where
   mempty = Max Nothing
-  Max (Just a) `mappend` Max (Just b) = Max (Just $! min a b)
+  Max (Just a) `mappend` Max (Just b) = Max (Just $! max a b)
   Max a        `mappend` Max Nothing  = Max a
   Max Nothing  `mappend` Max b        = Max b
 
