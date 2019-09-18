@@ -26,9 +26,11 @@ module Data.Monoid.Statistics.Class
   ) where
 
 import           Data.Data    (Typeable,Data)
-import           Data.Monoid
 #if MIN_VERSION_base(4,9,0)
-import           Data.Semigroup
+import           Data.Semigroup (Semigroup(..))
+import           Data.Monoid    (Monoid(..),Sum(..),Product(..))
+#else
+import           Data.Monoid    (Monoid(..),(<>),Sum(..),Product(..))
 #endif
 import           Data.Vector.Unboxed          (Unbox)
 import           Data.Vector.Unboxed.Deriving (derivingUnbox)
