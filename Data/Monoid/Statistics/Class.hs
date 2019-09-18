@@ -1,4 +1,5 @@
 {-# LANGUAGE BangPatterns          #-}
+{-# LANGUAGE CPP                   #-}
 {-# LANGUAGE DeriveDataTypeable    #-}
 {-# LANGUAGE DeriveGeneric         #-}
 {-# LANGUAGE FlexibleInstances     #-}
@@ -26,6 +27,9 @@ module Data.Monoid.Statistics.Class
 
 import           Data.Data    (Typeable,Data)
 import           Data.Monoid
+#if MIN_VERSION_base(4,9,0)
+import           Data.Semigroup
+#endif
 import           Data.Vector.Unboxed          (Unbox)
 import           Data.Vector.Unboxed.Deriving (derivingUnbox)
 import qualified Data.Foldable       as F
@@ -86,16 +90,10 @@ instance (Num a, a ~ a') => StatMonoid (Sum a) a' where
 instance (Num a, a ~ a') => StatMonoid (Product a) a' where
   singletonMonoid = Product
 
-instance Monoid KahanSum where
-  mempty        = zero
-  mappend s1 s2 = add s1 (kahan s2)
 instance Real a => StatMonoid KahanSum a where
   addValue m x = add m (realToFrac x)
   {-# INLINE addValue #-}
 
-instance Monoid KBNSum where
-  mempty        = zero
-  mappend s1 s2 = add s1 (kbn s2)
 instance Real a => StatMonoid KBNSum a where
   addValue m x = add m (realToFrac x)
   {-# INLINE addValue #-}
@@ -109,12 +107,19 @@ instance Real a => StatMonoid KBNSum a where
 data Pair a b = Pair !a !b
               deriving (Show,Eq,Ord,Typeable,Data,Generic)
 
+#if MIN_VERSION_base(4,9,0)
+instance (Semigroup a, Semigroup b) => Semigroup (Pair a b) where
+  (<>) = mappendPair
+#endif
+
 instance (Monoid a, Monoid b) => Monoid (Pair a b) where
-  mempty = Pair mempty mempty
-  mappend (Pair x y) (Pair x' y') =
-    Pair (x <> x') (y <> y')
+  mempty  = Pair mempty mempty
+  mappend = mappendPair
   {-# INLINABLE mempty  #-}
-  {-# INLINABLE mappend #-}
+  {-# INLINE mappend #-}
+
+mappendPair (Pair x y) (Pair x' y') = Pair (x <> x') (y <> y')
+{-# INLINABLE mappendPair #-}
 
 instance (StatMonoid a x, StatMonoid b x) => StatMonoid (Pair a b) x where
   addValue (Pair a b) !x = Pair (addValue a x) (addValue b x)

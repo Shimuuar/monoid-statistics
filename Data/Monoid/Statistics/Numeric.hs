@@ -1,4 +1,5 @@
 {-# LANGUAGE BangPatterns          #-}
+{-# LANGUAGE CPP                   #-}
 {-# LANGUAGE DeriveDataTypeable    #-}
 {-# LANGUAGE DeriveGeneric         #-}
 {-# LANGUAGE FlexibleContexts      #-}
@@ -63,6 +64,11 @@ type Count = CountG Int
 asCount :: CountG a -> CountG a
 asCount = id
 
+#if MIN_VERSION_base(4,9,0)
+instance Integral a => Semigroup (CountG a) where
+  (<>) = mappend
+#endif
+
 instance Integral a => Monoid (CountG a) where
   mempty                      = CountG 0
   CountG i `mappend` CountG j = CountG (i + j)
@@ -91,6 +97,11 @@ data MeanKahan = MeanKahan !Int !KahanSum
 asMeanKahan :: MeanKahan -> MeanKahan
 asMeanKahan = id
 
+#if MIN_VERSION_base(4,9,0)
+instance Semigroup MeanKahan where
+  (<>) = mappend
+#endif
+
 instance Monoid MeanKahan where
   mempty = MeanKahan 0 mempty
   MeanKahan 0  _  `mappend` m               = m
@@ -115,6 +126,11 @@ data MeanKBN = MeanKBN !Int !KBNSum
 
 asMeanKBN :: MeanKBN -> MeanKBN
 asMeanKBN = id
+
+#if MIN_VERSION_base(4,9,0)
+instance Semigroup MeanKBN where
+  (<>) = mappend
+#endif
 
 instance Monoid MeanKBN where
   mempty = MeanKBN 0 mempty
@@ -149,6 +165,11 @@ data WelfordMean = WelfordMean !Int    -- Number of entries
 -- | Type restricted 'id'
 asWelfordMean :: WelfordMean -> WelfordMean
 asWelfordMean = id
+
+#if MIN_VERSION_base(4,9,0)
+instance Semigroup WelfordMean where
+  (<>) = mappend
+#endif
 
 instance Monoid WelfordMean where
   mempty = WelfordMean 0 0
@@ -190,6 +211,11 @@ data Variance = Variance {-# UNPACK #-} !Int    --  Number of elements in the sa
 asVariance :: Variance -> Variance
 asVariance = id
 {-# INLINE asVariance #-}
+
+#if MIN_VERSION_base(4,9,0)
+instance Semigroup Variance where
+  (<>) = mappend
+#endif
 
 -- | Iterative algorithm for calculation of variance [Chan1979]
 instance Monoid Variance where
@@ -234,6 +260,11 @@ instance CalcVariance Variance where
 newtype Min a = Min { calcMin :: Maybe a }
               deriving (Show,Eq,Ord,Typeable,Data,Generic)
 
+#if MIN_VERSION_base(4,9,0)
+instance Ord a => Semigroup (Min a) where
+  (<>) = mappend
+#endif
+
 instance Ord a => Monoid (Min a) where
   mempty = Min Nothing
   Min (Just a) `mappend` Min (Just b) = Min (Just $! min a b)
@@ -248,6 +279,11 @@ instance (Ord a, a ~ a') => StatMonoid (Min a) a' where
 -- | Calculate maximum of sample
 newtype Max a = Max { calcMax :: Maybe a }
               deriving (Show,Eq,Ord,Typeable,Data,Generic)
+
+#if MIN_VERSION_base(4,9,0)
+instance Ord a => Semigroup (Max a) where
+  (<>) = mappend
+#endif
 
 instance Ord a => Monoid (Max a) where
   mempty = Max Nothing
@@ -270,6 +306,11 @@ instance Eq MinD where
   MinD a == MinD b
     | isNaN a && isNaN b = True
     | otherwise          = a == b
+
+#if MIN_VERSION_base(4,9,0)
+instance Semigroup MinD where
+  (<>) = mappend
+#endif
 
 -- N.B. forall (x :: Double) (x <= NaN) == False
 instance Monoid MinD where
@@ -296,6 +337,11 @@ instance Eq MaxD where
     | isNaN a && isNaN b = True
     | otherwise          = a == b
 
+#if MIN_VERSION_base(4,9,0)
+instance Semigroup MaxD where
+  (<>) = mappend
+#endif
+
 instance Monoid MaxD where
   mempty = MaxD (0/0)
   mappend (MaxD x) (MaxD y)
@@ -320,6 +366,11 @@ data BinomAcc = BinomAcc { binomAccSuccess :: !Int
 -- | Type restricted 'id'
 asBinomAcc :: BinomAcc -> BinomAcc
 asBinomAcc = id
+
+#if MIN_VERSION_base(4,9,0)
+instance Semigroup BinomAcc where
+  (<>) = mappend
+#endif
 
 instance Monoid BinomAcc where
   mempty = BinomAcc 0 0
