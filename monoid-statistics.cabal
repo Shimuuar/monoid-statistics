@@ -17,6 +17,13 @@ Description:
   possibility to parallelize calculations. However not all statistics 
   could be calculated this way.
 
+tested-with:
+    GHC ==7.10.3
+     || ==8.0.2
+     || ==8.2.2
+     || ==8.4.4
+     || ==8.6.5
+
 extra-source-files:
   README.md
 
