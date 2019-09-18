@@ -27,11 +27,9 @@ module Data.Monoid.Statistics.Class
 
 import           Data.Data    (Typeable,Data)
 #if MIN_VERSION_base(4,9,0)
-import           Data.Semigroup (Semigroup(..))
-import           Data.Monoid    (Monoid(..),Sum(..),Product(..))
-#else
-import           Data.Monoid    (Monoid(..),(<>),Sum(..),Product(..))
+import qualified Data.Semigroup as SG (Semigroup(..))
 #endif
+import           Data.Monoid    (Monoid(..),(<>),Sum(..),Product(..))
 import           Data.Vector.Unboxed          (Unbox)
 import           Data.Vector.Unboxed.Deriving (derivingUnbox)
 import qualified Data.Foldable       as F
@@ -110,18 +108,15 @@ data Pair a b = Pair !a !b
               deriving (Show,Eq,Ord,Typeable,Data,Generic)
 
 #if MIN_VERSION_base(4,9,0)
-instance (Semigroup a, Semigroup b) => Semigroup (Pair a b) where
-  (<>) = mappendPair
+instance (SG.Semigroup a, SG.Semigroup b) => SG.Semigroup (Pair a b) where
+  Pair x y <> Pair x' y' = Pair (x SG.<> x') (y SG.<> y')
 #endif
 
 instance (Monoid a, Monoid b) => Monoid (Pair a b) where
   mempty  = Pair mempty mempty
-  mappend = mappendPair
+  mappend (Pair x y) (Pair x' y') = Pair (x <> x') (y <> y')
   {-# INLINABLE mempty  #-}
   {-# INLINE mappend #-}
-
-mappendPair (Pair x y) (Pair x' y') = Pair (x <> x') (y <> y')
-{-# INLINABLE mappendPair #-}
 
 instance (StatMonoid a x, StatMonoid b x) => StatMonoid (Pair a b) x where
   addValue (Pair a b) !x = Pair (addValue a x) (addValue b x)

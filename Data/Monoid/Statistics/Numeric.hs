@@ -44,6 +44,9 @@ module Data.Monoid.Statistics.Numeric (
 
 import Data.Monoid                  ((<>))
 import Data.Monoid.Statistics.Class
+#if MIN_VERSION_base(4,9,0)
+import qualified Data.Semigroup as SG (Semigroup(..))
+#endif
 import Data.Data                    (Typeable,Data)
 import Data.Vector.Unboxed          (Unbox)
 import Data.Vector.Unboxed.Deriving (derivingUnbox)
@@ -65,7 +68,7 @@ asCount :: CountG a -> CountG a
 asCount = id
 
 #if MIN_VERSION_base(4,9,0)
-instance Integral a => Semigroup (CountG a) where
+instance Integral a => SG.Semigroup (CountG a) where
   (<>) = mappend
 #endif
 
@@ -98,7 +101,7 @@ asMeanKahan :: MeanKahan -> MeanKahan
 asMeanKahan = id
 
 #if MIN_VERSION_base(4,9,0)
-instance Semigroup MeanKahan where
+instance SG.Semigroup MeanKahan where
   (<>) = mappend
 #endif
 
@@ -128,7 +131,7 @@ asMeanKBN :: MeanKBN -> MeanKBN
 asMeanKBN = id
 
 #if MIN_VERSION_base(4,9,0)
-instance Semigroup MeanKBN where
+instance SG.Semigroup MeanKBN where
   (<>) = mappend
 #endif
 
@@ -167,7 +170,7 @@ asWelfordMean :: WelfordMean -> WelfordMean
 asWelfordMean = id
 
 #if MIN_VERSION_base(4,9,0)
-instance Semigroup WelfordMean where
+instance SG.Semigroup WelfordMean where
   (<>) = mappend
 #endif
 
@@ -213,7 +216,7 @@ asVariance = id
 {-# INLINE asVariance #-}
 
 #if MIN_VERSION_base(4,9,0)
-instance Semigroup Variance where
+instance SG.Semigroup Variance where
   (<>) = mappend
 #endif
 
@@ -261,7 +264,7 @@ newtype Min a = Min { calcMin :: Maybe a }
               deriving (Show,Eq,Ord,Typeable,Data,Generic)
 
 #if MIN_VERSION_base(4,9,0)
-instance Ord a => Semigroup (Min a) where
+instance Ord a => SG.Semigroup (Min a) where
   (<>) = mappend
 #endif
 
@@ -281,7 +284,7 @@ newtype Max a = Max { calcMax :: Maybe a }
               deriving (Show,Eq,Ord,Typeable,Data,Generic)
 
 #if MIN_VERSION_base(4,9,0)
-instance Ord a => Semigroup (Max a) where
+instance Ord a => SG.Semigroup (Max a) where
   (<>) = mappend
 #endif
 
@@ -308,7 +311,7 @@ instance Eq MinD where
     | otherwise          = a == b
 
 #if MIN_VERSION_base(4,9,0)
-instance Semigroup MinD where
+instance SG.Semigroup MinD where
   (<>) = mappend
 #endif
 
@@ -338,7 +341,7 @@ instance Eq MaxD where
     | otherwise          = a == b
 
 #if MIN_VERSION_base(4,9,0)
-instance Semigroup MaxD where
+instance SG.Semigroup MaxD where
   (<>) = mappend
 #endif
 
@@ -368,7 +371,7 @@ asBinomAcc :: BinomAcc -> BinomAcc
 asBinomAcc = id
 
 #if MIN_VERSION_base(4,9,0)
-instance Semigroup BinomAcc where
+instance SG.Semigroup BinomAcc where
   (<>) = mappend
 #endif
 
