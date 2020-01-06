@@ -142,6 +142,10 @@ instance Real a => StatMonoid KBNSum a where
   addValue m x = add m (realToFrac x)
   {-# INLINE addValue #-}
 
+instance Real a => StatMonoid KB2Sum a where
+  addValue m x = add m (realToFrac x)
+  {-# INLINE addValue #-}
+
 
 ----------------------------------------------------------------
 -- Ad-hoc type class
