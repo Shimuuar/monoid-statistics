@@ -1,2 +1,4 @@
 TAGS
 dist/
+dist-newstyle/
+.ghc.environment*
