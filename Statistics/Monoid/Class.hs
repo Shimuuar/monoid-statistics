@@ -1,6 +1,9 @@
 {-# LANGUAGE BangPatterns          #-}
 {-# LANGUAGE DeriveDataTypeable    #-}
+{-# LANGUAGE DeriveFoldable        #-}
+{-# LANGUAGE DeriveFunctor         #-}
 {-# LANGUAGE DeriveGeneric         #-}
+{-# LANGUAGE DeriveTraversable     #-}
 {-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE RankNTypes            #-}
@@ -26,11 +29,13 @@ module Statistics.Monoid.Class
   , calcStddevML
     -- * Data types
   , Pair(..)
+  , Weighted(..)
   ) where
 
-import           Data.Data       (Typeable,Data)
-import           Data.Monoid     hiding ((<>))
-import           Data.Semigroup  (Semigroup(..))
+import           Data.Data        (Typeable,Data)
+import           Data.Monoid      hiding ((<>))
+import           Data.Semigroup   (Semigroup(..))
+import           Data.Traversable (Traversable)
 import           Data.Vector.Unboxed          (Unbox)
 import           Data.Vector.Unboxed.Deriving (derivingUnbox)
 import qualified Data.Foldable       as F
@@ -217,7 +222,20 @@ instance (StatMonoid a x, StatMonoid b x) => StatMonoid (Pair a b) x where
   {-# INLINE addValue        #-}
   {-# INLINE singletonMonoid #-}
 
+
+
+-- | Value @a@ weighted by weight @w@
+data Weighted w a = Weighted w a
+              deriving (Show,Eq,Ord,Typeable,Data,Generic,Functor,Foldable,Traversable)
+
+
+
+
 derivingUnbox "Pair"
   [t| forall a b. (Unbox a, Unbox b) => Pair a b -> (a,b) |]
   [| \(Pair a b) -> (a,b) |]
   [| \(a,b) -> Pair a b   |]
+derivingUnbox "Weighted"
+  [t| forall w a. (Unbox w, Unbox a) => Weighted w a -> (w,a) |]
+  [| \(Weighted w a) -> (w,a) |]
+  [| \(w,a) -> Weighted w a   |]
