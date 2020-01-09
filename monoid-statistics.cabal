@@ -54,7 +54,7 @@ Library
                    Statistics.Monoid.Numeric
                    Statistics.Monoid.Extra
 
-test-suite tests
+test-suite monoid-statistics-tests
   default-language: Haskell2010
   type:             exitcode-stdio-1.0
   ghc-options:      -Wall -threaded
