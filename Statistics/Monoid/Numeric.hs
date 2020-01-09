@@ -19,8 +19,13 @@ module Statistics.Monoid.Numeric (
     -- ** Mean
   , Mean
   , asMean
+  , WMean
+  , asWMean
+    -- *** Concrete algorithms
   , MeanKBN(..)
   , asMeanKBN
+  , WMeanKBN
+  , asWMeanKBN
     -- ** Variance
   , Variance(..)
   , asVariance
@@ -101,6 +106,15 @@ type Mean = MeanKBN
 asMean :: Mean -> Mean
 asMean = id
 
+-- | Type alias for currently recommended algorithms for calculation
+--   of weighted mean. It should be default choice
+type WMean = WMeanKBN
+
+asWMean :: WMean -> WMean
+asWMean = id
+
+
+
 -- | Incremental calculation of mean. Sum of elements is calculated
 --   using Kahan-Babuška-Neumaier summation.
 data MeanKBN = MeanKBN !Int !KBNSum
@@ -131,6 +145,31 @@ instance CalcMean MeanKBN where
 
 
 
+-- | Incremental calculation of weighed mean. Sum of both weights and
+--   elements is calculated using Kahan-Babuška-Neumaier summation.
+data WMeanKBN = WMeanKBN !KBNSum !KBNSum
+              deriving (Show,Eq,Typeable,Data,Generic)
+
+asWMeanKBN :: WMeanKBN -> WMeanKBN
+asWMeanKBN = id
+
+
+instance Semigroup WMeanKBN where
+  (<>) = mappend
+  {-# INLINE (<>) #-}
+
+instance Monoid WMeanKBN where
+  mempty = WMeanKBN mempty mempty
+  WMeanKBN n1 s1 `mappend` WMeanKBN n2 s2 = WMeanKBN (n1 <> n2) (s1 <> s2)
+
+instance (Real w, Real a) => StatMonoid WMeanKBN (Weighted w a) where
+  addValue (WMeanKBN n m) (Weighted w a)
+    = WMeanKBN (addValue n w) (addValue m a)
+
+instance CalcMean WMeanKBN where
+  calcMean (WMeanKBN (kbn -> w) (kbn -> s))
+    | w <= 0    = Nothing
+    | otherwise = Just (s / w)
 
 
 
