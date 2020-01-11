@@ -27,7 +27,7 @@ module Statistics.Monoid.Numeric (
   , asMeanNaive
   , MeanKBN(..)
   , asMeanKBN
-  , WMeanKBN
+  , WMeanKBN(..)
   , asWMeanKBN
     -- ** Variance
   , Variance(..)
@@ -190,8 +190,10 @@ instance CalcMean MeanKBN where
 
 -- | Incremental calculation of weighed mean. Sum of both weights and
 --   elements is calculated using Kahan-Babuška-Neumaier summation.
-data WMeanKBN = WMeanKBN {-# UNPACK #-} !KBNSum {-# UNPACK #-} !KBNSum
-              deriving (Show,Eq,Typeable,Data,Generic)
+data WMeanKBN = WMeanKBN
+  {-# UNPACK #-} !KBNSum  -- Weight
+  {-# UNPACK #-} !KBNSum  -- Weighted sum
+  deriving (Show,Eq,Typeable,Data,Generic)
 
 asWMeanKBN :: WMeanKBN -> WMeanKBN
 asWMeanKBN = id
