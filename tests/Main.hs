@@ -134,6 +134,13 @@ main = defaultMain $ testGroup "monoid-statistics"
         p_addValue1 (T :: T (Weighted Double Double))
       , p_addValue2 (T :: T (Weighted Double Double))
       ]
+    , testType (T :: T WMeanNaive)
+      [ p_memptyIsNeutral
+        -- , p_associativity
+      , p_commutativity
+      , p_addValue1 (T :: T (Weighted Double Double))
+      , p_addValue2 (T :: T (Weighted Double Double))
+      ]
     , testType (T :: T Variance)
       [ p_memptyIsNeutral
         -- , p_associativity
@@ -274,6 +281,12 @@ instance Arbitrary WMeanKBN where
     KBNSum w1 w2 <- arbitraryKBN n
     s            <- arbitraryKBN n
     return $! WMeanKBN (KBNSum (abs w1) w2) s
+
+instance Arbitrary WMeanNaive where
+  arbitrary = do
+    NonNegative w <- arbitrary
+    s             <- arbitrary
+    return $! WMeanNaive w s
 
 instance Arbitrary Variance where
   arbitrary = arbitrary >>= \x -> case x of

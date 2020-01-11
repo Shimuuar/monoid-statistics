@@ -16,7 +16,7 @@ module Statistics.Monoid.Numeric (
     CountG(..)
   , Count
   , asCount
-    -- ** Mean
+    -- ** Mean algorithms
     -- ** Default algorithms
   , Mean
   , asMean
@@ -27,8 +27,11 @@ module Statistics.Monoid.Numeric (
   , asMeanNaive
   , MeanKBN(..)
   , asMeanKBN
+    -- *** Weighted mean
   , WMeanKBN(..)
   , asWMeanKBN
+  , WMeanNaive(..)
+  , asWMeanNaive
     -- ** Variance
   , Variance(..)
   , asVariance
@@ -188,6 +191,39 @@ instance CalcMean MeanKBN where
 
 ----------------------------------------------------------------
 
+-- | Incremental calculation of weighed mean.
+data WMeanNaive = WMeanNaive
+  !Double  -- Weight
+  !Double  -- Weighted sum
+  deriving (Show,Eq,Typeable,Data,Generic)
+
+asWMeanNaive :: WMeanNaive -> WMeanNaive
+asWMeanNaive = id
+
+
+instance Semigroup WMeanNaive where
+  (<>) = mappend
+  {-# INLINE (<>) #-}
+
+instance Monoid WMeanNaive where
+  mempty = WMeanNaive 0 0
+  WMeanNaive w1 s1 `mappend` WMeanNaive w2 s2 = WMeanNaive (w1 + w2) (s1 + s2)
+
+instance (Real w, Real a) => StatMonoid WMeanNaive (Weighted w a) where
+  addValue (WMeanNaive n s) (Weighted w a)
+    = WMeanNaive (n + w') (s + (w' * a'))
+    where
+      w' = realToFrac w
+      a' = realToFrac a
+  {-# INLINE addValue #-}
+
+instance CalcMean WMeanNaive where
+  calcMean (WMeanNaive w s)
+    | w <= 0    = Nothing
+    | otherwise = Just (s / w)
+
+----------------------------------------------------------------
+
 -- | Incremental calculation of weighed mean. Sum of both weights and
 --   elements is calculated using Kahan-Babuška-Neumaier summation.
 data WMeanKBN = WMeanKBN
@@ -234,7 +270,7 @@ data VarWelfordKBN = VarWelfordKBN
 asVarWelfordKBN :: VarWelfordKBN -> VarWelfordKBN
 asVarWelfordKBN = id
 
-  
+
 -- | Incremental algorithms for calculation the standard deviation.
 data Variance = Variance {-# UNPACK #-} !Int    --  Number of elements in the sample
                          {-# UNPACK #-} !Double -- Current sum of elements of sample
