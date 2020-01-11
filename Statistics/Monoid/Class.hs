@@ -223,6 +223,27 @@ instance (StatMonoid a x, StatMonoid b x) => StatMonoid (Pair a b) x where
   {-# INLINE singletonMonoid #-}
 
 
+-- | Strict pair for parallel accumulation
+data PPair a b = PPair !a !b
+
+instance (Semigroup a, Semigroup b) => Semigroup (PPair a b) where
+  PPair x y <> PPair x' y' = PPair (x <> x') (y <> y')
+  {-# INLINABLE (<>) #-}
+
+instance (Monoid a, Monoid b) => Monoid (PPair a b) where
+  mempty = PPair mempty mempty
+  PPair x y `mappend` PPair x' y' = PPair (x `mappend` x') (y `mappend` y')
+  {-# INLINABLE mempty  #-}
+  {-# INLINABLE mappend #-}
+
+instance (StatMonoid a x, StatMonoid b y) => StatMonoid (PPair a b) (x,y) where
+  addValue (PPair a b) (!x,!y) = PPair (addValue a x) (addValue b y)
+  singletonMonoid (!x,!y) = PPair (singletonMonoid x) (singletonMonoid y)
+  {-# INLINE addValue        #-}
+  {-# INLINE singletonMonoid #-}
+
+
+
 
 -- | Value @a@ weighted by weight @w@
 data Weighted w a = Weighted w a
