@@ -117,7 +117,7 @@ asWMean = id
 
 -- | Incremental calculation of mean. Sum of elements is calculated
 --   using Kahan-Babuška-Neumaier summation.
-data MeanKBN = MeanKBN !Int !KBNSum
+data MeanKBN = MeanKBN !Int {-# UNPACK #-} !KBNSum
              deriving (Show,Eq,Typeable,Data,Generic)
 
 asMeanKBN :: MeanKBN -> MeanKBN
@@ -136,6 +136,7 @@ instance Monoid MeanKBN where
 
 instance Real a => StatMonoid MeanKBN a where
   addValue (MeanKBN n m) x = MeanKBN (n+1) (addValue m x)
+  {-# INLINE addValue #-}
 
 instance CalcCount MeanKBN where
   calcCount (MeanKBN n _) = n
@@ -147,7 +148,7 @@ instance CalcMean MeanKBN where
 
 -- | Incremental calculation of weighed mean. Sum of both weights and
 --   elements is calculated using Kahan-Babuška-Neumaier summation.
-data WMeanKBN = WMeanKBN !KBNSum !KBNSum
+data WMeanKBN = WMeanKBN {-# UNPACK #-} !KBNSum {-# UNPACK #-} !KBNSum
               deriving (Show,Eq,Typeable,Data,Generic)
 
 asWMeanKBN :: WMeanKBN -> WMeanKBN
@@ -165,6 +166,7 @@ instance Monoid WMeanKBN where
 instance (Real w, Real a) => StatMonoid WMeanKBN (Weighted w a) where
   addValue (WMeanKBN n m) (Weighted w a)
     = WMeanKBN (addValue n w) (addValue m a)
+  {-# INLINE addValue #-}
 
 instance CalcMean WMeanKBN where
   calcMean (WMeanKBN (kbn -> w) (kbn -> s))
@@ -223,6 +225,7 @@ instance Real a => StatMonoid Variance a where
     = Variance (n + 1) (t + x) (s + sqr (t  - n' * x) / (n' * (n'+1)))
     where
       n' = fromIntegral n
+  {-# INLINE addValue #-}
   singletonMonoid x = Variance 1 (realToFrac x) 0
   {-# INLINE singletonMonoid #-}
 
