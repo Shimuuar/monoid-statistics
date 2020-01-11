@@ -40,8 +40,8 @@ p_commutativity _
 
 p_addValue1
   :: forall a m. ( StatMonoid m a
-                 , Arbitrary m, Show m, Eq m
-                 , Arbitrary a, Show a, Eq a)
+                 , Eq m
+                 , Arbitrary a, Show a)
   => T a -> T m -> TestTree
 p_addValue1 _ _
   = testProperty "addValue x mempty == singletonMonoid" $ \(a :: a) ->
@@ -50,8 +50,8 @@ p_addValue1 _ _
 
 p_addValue2
   :: forall a m. ( StatMonoid m a
-                 , Arbitrary m, Show m, Eq m
-                 , Arbitrary a, Show a, Eq a)
+                 , Show m, Eq m
+                 , Arbitrary a, Show a)
   => T a -> T m -> TestTree
 p_addValue2 _ _
   = testProperty "addValue law" $ \(x :: a) (y :: a) ->
@@ -69,51 +69,31 @@ testType :: forall m. Typeable m => T m -> [T m -> TestTree] -> TestTree
 testType t props = testGroup (show (typeOf (undefined :: m)))
                              (fmap ($ t) props)
 
+testStatMonoid
+  :: (Typeable m
+     , StatMonoid m a
+     , Arbitrary m, Show m, Eq m
+     , Arbitrary a, Show a)
+  => T m
+  -> T a
+  -> TestTree
+testStatMonoid tm ta = testType tm
+  [ p_memptyIsNeutral
+  , p_associativity
+  , p_commutativity
+  , p_addValue1 ta
+  , p_addValue2 ta
+  ]
 
 main :: IO ()
-main = defaultMain $ testGroup "monoid-statistics"
-  [ testType (T :: T (CountG Int))
-      [ p_memptyIsNeutral
-      , p_associativity
-      , p_commutativity
-      , p_addValue1 (T :: T Int)
-      , p_addValue2 (T :: T Int)
-      ]
-  , testType (T :: T (Min Int))
-      [ p_memptyIsNeutral
-      , p_associativity
-      , p_commutativity
-      , p_addValue1 (T :: T Int)
-      , p_addValue2 (T :: T Int)
-      ]
-  , testType (T :: T (Max Int))
-      [ p_memptyIsNeutral
-      , p_associativity
-      , p_commutativity
-      , p_addValue1 (T :: T Int)
-      , p_addValue2 (T :: T Int)
-      ]
-  , testType (T :: T MinD)
-      [ p_memptyIsNeutral
-      , p_associativity
-      , p_commutativity
-      , p_addValue1 (T :: T Double)
-      , p_addValue2 (T :: T Double)
-      ]
-  , testType (T :: T MaxD)
-      [ p_memptyIsNeutral
-      , p_associativity
-      , p_commutativity
-      , p_addValue1 (T :: T Double)
-      , p_addValue2 (T :: T Double)
-      ]
-  , testType (T :: T BinomAcc)
-      [ p_memptyIsNeutral
-      , p_associativity
-      , p_commutativity
-      , p_addValue1 (T :: T Bool)
-      , p_addValue2 (T :: T Bool)
-      ]
+main = defaultMain $ testGroup "Monoid laws"
+  [ testStatMonoid (T :: T (CountG Int)) (T :: T Int)
+  , testStatMonoid (T :: T (Min Int))    (T :: T Int)
+  , testStatMonoid (T :: T (Max Int))    (T :: T Int)
+  , testStatMonoid (T :: T MinD)         (T :: T Double)
+  , testStatMonoid (T :: T MaxD)         (T :: T Double)
+  , testStatMonoid (T :: T BinomAcc)     (T :: T Bool)
+  -- Monoids that use floating point and thus violate laws
   , testType (T :: T WelfordMean)
       [ p_memptyIsNeutral
       -- , p_associativity
