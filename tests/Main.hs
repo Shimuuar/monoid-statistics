@@ -97,6 +97,13 @@ main = defaultMain $ testGroup "monoid-statistics"
     , testStatMonoid (T :: T MaxD)         (T :: T Double)
     , testStatMonoid (T :: T BinomAcc)     (T :: T Bool)
     -- Monoids that use floating point and thus violate laws
+    , testType (T :: T MeanNaive)
+      [ p_memptyIsNeutral
+        -- , p_associativity
+      , p_commutativity
+      , p_addValue1 (T :: T Double)
+        -- , p_addValue2 (T :: T Double)
+      ]
     , testType (T :: T WelfordMean)
       [ p_memptyIsNeutral
         -- , p_associativity
@@ -158,6 +165,7 @@ main = defaultMain $ testGroup "monoid-statistics"
     , testMeanMonoid (T :: T MeanKBN)
     , testMeanMonoid (T :: T MeanKahan)
     , testMeanMonoid (T :: T WelfordMean)
+    , testMeanMonoid (T :: T MeanNaive)
     ]
   ]
 
@@ -221,6 +229,13 @@ instance Arbitrary WelfordMean where
     NonNegative 0 -> return mempty
     NonNegative n -> do m <- arbitrary
                         return (WelfordMean n m)
+
+instance Arbitrary MeanNaive where
+  arbitrary = arbitrary >>= \x -> case x of
+    NonNegative 0 -> return mempty
+    NonNegative n -> do m <- arbitrary
+                        return (MeanNaive n m)
+
 
 instance Arbitrary Variance where
   arbitrary = arbitrary >>= \x -> case x of

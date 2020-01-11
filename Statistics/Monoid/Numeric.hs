@@ -17,11 +17,14 @@ module Statistics.Monoid.Numeric (
   , Count
   , asCount
     -- ** Mean
+    -- ** Default algorithms
   , Mean
   , asMean
   , WMean
   , asWMean
-    -- *** Concrete algorithms
+    -- *** Mean
+  , MeanNaive(..)
+  , asMeanNaive
   , MeanKBN(..)
   , asMeanKBN
   , WMeanKBN
@@ -116,8 +119,45 @@ asWMean = id
 
 ----------------------------------------------------------------
 
--- | Incremental calculation of mean. Sum of elements is calculated
---   using Kahan-Babuška-Neumaier summation.
+-- | Incremental calculation of mean. It tracks separately number of
+--   elements and running sum. Note that summation of floating point
+--   numbers loses precision and genrally use 'MeanKBN' is
+--   recommended.
+data MeanNaive = MeanNaive !Int !Double
+             deriving (Show,Eq,Typeable,Data,Generic)
+
+asMeanNaive :: MeanNaive -> MeanNaive
+asMeanNaive = id
+
+
+instance Semigroup MeanNaive where
+  (<>) = mappend
+  {-# INLINE (<>) #-}
+
+instance Monoid MeanNaive where
+  mempty = MeanNaive 0 0
+  MeanNaive 0  _  `mappend` m               = m
+  m               `mappend` MeanNaive 0  _  = m
+  MeanNaive n1 s1 `mappend` MeanNaive n2 s2 = MeanNaive (n1+n2) (s1 + s2)
+
+instance Real a => StatMonoid MeanNaive a where
+  addValue (MeanNaive n m) x = MeanNaive (n+1) (m + realToFrac x)
+  {-# INLINE addValue #-}
+
+instance CalcCount MeanNaive where
+  calcCount (MeanNaive n _) = n
+instance CalcMean MeanNaive where
+  calcMean (MeanNaive 0 _) = Nothing
+  calcMean (MeanNaive n s) = Just (s / fromIntegral n)
+
+
+----------------------------------------------------------------
+
+-- | Incremental calculation of mean. It tracks separately number of
+--   elements and running sum. It uses algorithm for compensated
+--   summation which works with mantissa of double size at cost of
+--   doing more operations. This means that it's usually possible to
+--   compute sum (and therefore mean) within 1 ulp.
 data MeanKBN = MeanKBN !Int {-# UNPACK #-} !KBNSum
              deriving (Show,Eq,Typeable,Data,Generic)
 
