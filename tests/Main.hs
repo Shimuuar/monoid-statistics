@@ -1,3 +1,4 @@
+{-# LANGUAGE FlexibleContexts    #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 --
 {-# OPTIONS_GHC -fno-warn-orphans #-}
@@ -6,6 +7,7 @@ import Data.Typeable
 import Numeric.Sum
 import Test.Tasty
 import Test.Tasty.QuickCheck
+import Test.Tasty.HUnit
 
 import Statistics.Monoid
 import Statistics.Monoid.Extra
@@ -86,43 +88,104 @@ testStatMonoid tm ta = testType tm
   ]
 
 main :: IO ()
-main = defaultMain $ testGroup "Monoid laws"
-  [ testStatMonoid (T :: T (CountG Int)) (T :: T Int)
-  , testStatMonoid (T :: T (Min Int))    (T :: T Int)
-  , testStatMonoid (T :: T (Max Int))    (T :: T Int)
-  , testStatMonoid (T :: T MinD)         (T :: T Double)
-  , testStatMonoid (T :: T MaxD)         (T :: T Double)
-  , testStatMonoid (T :: T BinomAcc)     (T :: T Bool)
-  -- Monoids that use floating point and thus violate laws
-  , testType (T :: T WelfordMean)
+main = defaultMain $ testGroup "monoid-statistics"
+  [ testGroup "Monoid laws"
+    [ testStatMonoid (T :: T (CountG Int)) (T :: T Int)
+    , testStatMonoid (T :: T (Min Int))    (T :: T Int)
+    , testStatMonoid (T :: T (Max Int))    (T :: T Int)
+    , testStatMonoid (T :: T MinD)         (T :: T Double)
+    , testStatMonoid (T :: T MaxD)         (T :: T Double)
+    , testStatMonoid (T :: T BinomAcc)     (T :: T Bool)
+    -- Monoids that use floating point and thus violate laws
+    , testType (T :: T WelfordMean)
       [ p_memptyIsNeutral
-      -- , p_associativity
+        -- , p_associativity
       , p_commutativity
       , p_addValue1 (T :: T Double)
-      -- , p_addValue2 (T :: T Double)
+        -- , p_addValue2 (T :: T Double)
       ]
-  , testType (T :: T MeanKBN)
+    , testType (T :: T MeanKBN)
       [ p_memptyIsNeutral
-      -- , p_associativity
-      -- , p_commutativity
+        -- , p_associativity
+        -- , p_commutativity
       , p_addValue1 (T :: T Double)
       , p_addValue2 (T :: T Double)
       ]
-  , testType (T :: T MeanKahan)
+    , testType (T :: T MeanKahan)
       [ p_memptyIsNeutral
-      -- , p_associativity
-      -- , p_commutativity
+        -- , p_associativity
+        -- , p_commutativity
       , p_addValue1 (T :: T Double)
-      -- , p_addValue2 (T :: T Double)
+        -- , p_addValue2 (T :: T Double)
       ]
-  , testType (T :: T Variance)
+    , testType (T :: T Variance)
       [ p_memptyIsNeutral
-      -- , p_associativity
+        -- , p_associativity
       , p_commutativity
       , p_addValue1 (T :: T Double)
       , p_addValue2 (T :: T Double)
       ]
+    ]
+  , testGroup "Monoids do right thing"
+    [ testCase "CountG"  $ let xs = "acbdef"
+                               n  = reduceSample xs :: Count
+                           in length xs @=? calcCount n
+    , testCase "Min []"  $ let xs = []
+                               n  = reduceSample xs :: Min Int
+                           in Nothing @=? calcMin n
+    , testCase "Min"     $ let xs = [1..10]
+                               n  = reduceSample xs :: Min Int
+                           in Just (minimum xs) @=? calcMin n
+    , testCase "Max []"  $ let xs = []
+                               n  = reduceSample xs :: Max Int
+                           in Nothing @=? calcMax n
+    , testCase "Max"     $ let xs = [1..10]
+                               n  = reduceSample xs :: Max Int
+                           in Just (maximum xs) @=? calcMax n
+    -- , testCase "MinD []" $ let xs = []
+    --                            n  = reduceSample xs :: MinD
+    --                        in Nothing @=? calcMinD n
+    , testCase "MinD"    $ let xs = [1..10]
+                               n  = reduceSample xs :: MinD
+                           in minimum xs @=? calcMinD n
+    -- , testCase "MaxD []" $ let xs = []
+    --                            n  = reduceSample xs :: MaxD
+    --                        in Nothing @=? calcMaxD n
+    , testCase "MaxD"    $ let xs = [1..10]
+                               n  = reduceSample xs :: MaxD
+                           in maximum xs @=? calcMaxD n
+    --
+    , testMeanMonoid (T :: T MeanKBN)
+    , testMeanMonoid (T :: T MeanKahan)
+    , testMeanMonoid (T :: T WelfordMean)
+    ]
   ]
+
+
+testMeanMonoid
+  :: forall m. (Typeable m, CalcMean m, CalcCount m, StatMonoid m Double)
+  => T m -> TestTree
+testMeanMonoid _ = testCase ("Mean of " ++ show (typeOf (undefined :: m))) $ do
+  let m = reduceSample testSample :: m
+  testSampleCount     @=? calcCount m
+  Just testSampleMean @=? calcMean  m
+  
+  
+-- | Test sample for which we could compute statistics exactly, and
+--   any reasonable algorithm should be able to return exact answer as
+--   well
+testSample :: [Double]
+testSample = [1..10]
+
+testSampleCount :: Int
+testSampleCount = length testSample
+
+testSampleMean :: Double
+testSampleMean = 5.5
+
+testSampleVariance :: Double
+testSampleVariance = 8.25
+
 
 ----------------------------------------------------------------
 
