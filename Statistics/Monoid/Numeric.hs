@@ -114,6 +114,7 @@ asWMean :: WMean -> WMean
 asWMean = id
 
 
+----------------------------------------------------------------
 
 -- | Incremental calculation of mean. Sum of elements is calculated
 --   using Kahan-Babuška-Neumaier summation.
@@ -145,6 +146,7 @@ instance CalcMean MeanKBN where
   calcMean (MeanKBN n s) = Just (kbn s / fromIntegral n)
 
 
+----------------------------------------------------------------
 
 -- | Incremental calculation of weighed mean. Sum of both weights and
 --   elements is calculated using Kahan-Babuška-Neumaier summation.
@@ -172,7 +174,6 @@ instance CalcMean WMeanKBN where
   calcMean (WMeanKBN (kbn -> w) (kbn -> s))
     | w <= 0    = Nothing
     | otherwise = Just (s / w)
-
 
 
 ----------------------------------------------------------------
@@ -246,7 +247,6 @@ instance CalcVariance Variance where
 
 
 
-
 ----------------------------------------------------------------
 
 -- | Calculate minimum of sample
@@ -265,6 +265,7 @@ instance Ord a => Monoid (Min a) where
 
 instance (Ord a, a ~ a') => StatMonoid (Min a) a' where
   singletonMonoid a = Min (Just a)
+
 
 ----------------------------------------------------------------
 
