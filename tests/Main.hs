@@ -166,6 +166,7 @@ main = defaultMain $ testGroup "monoid-statistics"
     , testMeanMonoid (T :: T MeanKahan)
     , testMeanMonoid (T :: T WelfordMean)
     , testMeanMonoid (T :: T MeanNaive)
+    , testWMeanMonoid (T :: T WMeanKBN)
     ]
   ]
 
@@ -178,6 +179,12 @@ testMeanMonoid _ = testCase ("Mean of " ++ show (typeOf (undefined :: m))) $ do
   testSampleCount     @=? calcCount m
   Just testSampleMean @=? calcMean  m
   
+testWMeanMonoid
+  :: forall m. (Typeable m, CalcMean m, StatMonoid m (Weighted Double Double))
+  => T m -> TestTree
+testWMeanMonoid _ = testCase ("Mean of " ++ show (typeOf (undefined :: m))) $ do
+  let m = reduceSample testWSample :: m
+  Just testWSampleMean @=? calcMean  m
   
 -- | Test sample for which we could compute statistics exactly, and
 --   any reasonable algorithm should be able to return exact answer as
@@ -185,11 +192,15 @@ testMeanMonoid _ = testCase ("Mean of " ++ show (typeOf (undefined :: m))) $ do
 testSample :: [Double]
 testSample = [1..10]
 
+testWSample :: [Weighted Double Double]
+testWSample = [Weighted x x | x <- [1..10]]
+
 testSampleCount :: Int
 testSampleCount = length testSample
 
-testSampleMean :: Double
-testSampleMean = 5.5
+testSampleMean,testWSampleMean :: Double
+testSampleMean  = 5.5
+testWSampleMean = 7.0
 
 testSampleVariance :: Double
 testSampleVariance = 8.25

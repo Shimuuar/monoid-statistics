@@ -207,7 +207,10 @@ instance Monoid WMeanKBN where
 
 instance (Real w, Real a) => StatMonoid WMeanKBN (Weighted w a) where
   addValue (WMeanKBN n m) (Weighted w a)
-    = WMeanKBN (addValue n w) (addValue m a)
+    = WMeanKBN (add n w') (add m (w' * a'))
+    where
+      w' = realToFrac w :: Double
+      a' = realToFrac a :: Double
   {-# INLINE addValue #-}
 
 instance CalcMean WMeanKBN where
