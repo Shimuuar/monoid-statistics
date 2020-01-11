@@ -113,6 +113,13 @@ main = defaultMain $ testGroup "monoid-statistics"
       , p_addValue1 (T :: T Double)
         -- , p_addValue2 (T :: T Double)
       ]
+    , testType (T :: T MeanKahan)
+      [ p_memptyIsNeutral
+        -- , p_associativity
+        -- , p_commutativity
+      , p_addValue1 (T :: T Double)
+        -- , p_addValue2 (T :: T Double)
+      ]
     , testType (T :: T MeanKBN)
       [ p_memptyIsNeutral
         -- , p_associativity
@@ -120,12 +127,12 @@ main = defaultMain $ testGroup "monoid-statistics"
       , p_addValue1 (T :: T Double)
       , p_addValue2 (T :: T Double)
       ]
-    , testType (T :: T MeanKahan)
-      [ p_memptyIsNeutral
+    , testType (T :: T WMeanKBN)
+      [ -- p_memptyIsNeutral -- FIXME: bug in <> of KBNSum
         -- , p_associativity
         -- , p_commutativity
-      , p_addValue1 (T :: T Double)
-        -- , p_addValue2 (T :: T Double)
+        p_addValue1 (T :: T (Weighted Double Double))
+      , p_addValue2 (T :: T (Weighted Double Double))
       ]
     , testType (T :: T Variance)
       [ p_memptyIsNeutral
@@ -180,14 +187,14 @@ testMeanMonoid _ = testCase ("Mean of " ++ show (typeOf (undefined :: m))) $ do
   let m = reduceSample testSample :: m
   testSampleCount     @=? calcCount m
   Just testSampleMean @=? calcMean  m
-  
+
 testWMeanMonoid
   :: forall m. (Typeable m, CalcMean m, StatMonoid m (Weighted Double Double))
   => T m -> TestTree
 testWMeanMonoid _ = testCase ("Mean of " ++ show (typeOf (undefined :: m))) $ do
   let m = reduceSample testWSample :: m
   Just testWSampleMean @=? calcMean  m
-  
+
 -- | Test sample for which we could compute statistics exactly, and
 --   any reasonable algorithm should be able to return exact answer as
 --   well
@@ -237,18 +244,36 @@ instance Arbitrary BinomAcc where
     NonNegative nFail <- arbitrary
     return $ BinomAcc nSucc (nFail + nSucc)
 
-instance Arbitrary WelfordMean where
-  arbitrary = arbitrary >>= \x -> case x of
-    NonNegative 0 -> return mempty
-    NonNegative n -> do m <- arbitrary
-                        return (WelfordMean n m)
-
 instance Arbitrary MeanNaive where
   arbitrary = arbitrary >>= \x -> case x of
     NonNegative 0 -> return mempty
     NonNegative n -> do m <- arbitrary
                         return (MeanNaive n m)
 
+instance Arbitrary WelfordMean where
+  arbitrary = arbitrary >>= \x -> case x of
+    NonNegative 0 -> return mempty
+    NonNegative n -> do m <- arbitrary
+                        return (WelfordMean n m)
+
+instance Arbitrary MeanKahan where
+  arbitrary = do
+    n <- arbitrary
+    s <- arbitraryKBN n
+    return $! MeanKahan (getNonNegative n) s
+
+instance Arbitrary MeanKBN where
+  arbitrary = do
+    n <- arbitrary
+    s <- arbitraryKBN n
+    return $! MeanKBN (getNonNegative n) s
+
+instance Arbitrary WMeanKBN where
+  arbitrary = do
+    n            <- arbitrary
+    KBNSum w1 w2 <- arbitraryKBN n
+    s            <- arbitraryKBN n
+    return $! WMeanKBN (KBNSum (abs w1) w2) s
 
 instance Arbitrary Variance where
   arbitrary = arbitrary >>= \x -> case x of
@@ -258,20 +283,16 @@ instance Arbitrary Variance where
       NonNegative s <- arbitrary
       return $ Variance n m s
 
-instance Arbitrary MeanKBN where
-  arbitrary = arbitrary >>= \x -> case x of
-    NonNegative 0 -> return mempty
-    NonNegative n -> do
-      x1 <- arbitrary
-      x2 <- arbitrary
-      x3 <- arbitrary
-      return $ MeanKBN n (((zero `add` x1) `add` x2) `add` x3)
+instance (Arbitrary a, Arbitrary w) => Arbitrary (Weighted w a) where
+  arbitrary = Weighted <$> arbitrary <*> arbitrary
 
-instance Arbitrary MeanKahan where
-  arbitrary = arbitrary >>= \x -> case x of
-    NonNegative 0 -> return mempty
-    NonNegative n -> do
-      x1 <- arbitrary
-      x2 <- arbitrary
-      x3 <- arbitrary
-      return $ MeanKahan n (((zero `add` x1) `add` x2) `add` x3)
+arbitraryKBN :: Summation a => NonNegative Int -> Gen a
+arbitraryKBN (NonNegative 0) = return zero
+arbitraryKBN (NonNegative 1) = do
+  x1 <- arbitrary
+  return $! zero `add` x1
+arbitraryKBN _ = do
+  x1 <- arbitrary
+  x2 <- arbitrary
+  x3 <- arbitrary
+  return $! ((zero `add` x1) `add` x2) `add` x3
