@@ -19,8 +19,10 @@ p_memptyIsNeutral
   => T m -> TestTree
 p_memptyIsNeutral _
   = testProperty "mempty is neutral" $ \(m :: m) ->
-       (m <> mempty) == m
-    && (mempty <> m) == m
+    counterexample ("m <> mempty = " ++ show (m <> mempty))
+  $ counterexample ("mempty <> m = " ++ show (mempty <> m))
+  $  (m <> mempty) == m
+  && (mempty <> m) == m
 
 p_associativity
   :: forall m. (Monoid m, Arbitrary m, Show m, Eq m)
