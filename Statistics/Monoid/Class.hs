@@ -264,7 +264,7 @@ instance (StatMonoid a x, StatMonoid b y) => StatMonoid (PPair a b) (x,y) where
 
 -- | Value @a@ weighted by weight @w@
 data Weighted w a = Weighted w a
-              deriving (Show,Eq,Ord,Typeable,Data,Generic,Functor,Foldable,Traversable)
+              deriving (Show,Eq,Ord,Typeable,Data,Generic,Functor,F.Foldable,Traversable)
 
 
 
