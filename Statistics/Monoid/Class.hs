@@ -27,6 +27,9 @@ module Statistics.Monoid.Class
   , CalcVariance(..)
   , calcStddev
   , calcStddevML
+    -- ** Total variance
+  , HasMean(..)
+  , HasVariance(..)
     -- * Data types
   , Pair(..)
   , Weighted(..)
@@ -196,6 +199,20 @@ calcStddev = fmap sqrt . calcVariance
 calcStddevML :: CalcVariance m => m -> Maybe Double
 calcStddevML = fmap sqrt . calcVarianceML
 
+
+-- | Value from which we can efficiently extract mean
+class CalcMean m => HasMean m where
+  getMean :: m -> Double
+
+class CalcVariance m => HasVariance m where
+  getVariance   :: m -> Double
+  getVarianceML :: m -> Double
+
+getStddev :: HasVariance m => m -> Double
+getStddev = sqrt . getVariance
+
+getStddevML :: HasVariance m => m -> Double
+getStddevML = sqrt . getVarianceML
 
 
 ----------------------------------------------------------------
