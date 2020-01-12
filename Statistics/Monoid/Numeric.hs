@@ -241,7 +241,7 @@ instance Semigroup WMeanKBN where
 
 instance Monoid WMeanKBN where
   mempty = WMeanKBN mempty mempty
-  WMeanKBN n1 s1 `mappend` WMeanKBN n2 s2 = WMeanKBN (n1 <> n2) (s1 <> s2)
+  WMeanKBN n1 s1 `mappend` WMeanKBN n2 s2 = WMeanKBN (n1 `mappend` n2) (s1 `mappend` s2)
 
 instance (Real w, Real a) => StatMonoid WMeanKBN (Weighted w a) where
   addValue (WMeanKBN n m) (Weighted w a)
