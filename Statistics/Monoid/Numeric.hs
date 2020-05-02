@@ -1,6 +1,8 @@
 {-# LANGUAGE BangPatterns          #-}
 {-# LANGUAGE DeriveDataTypeable    #-}
+{-# LANGUAGE DeriveFoldable        #-}
 {-# LANGUAGE DeriveGeneric         #-}
+{-# LANGUAGE DeriveTraversable     #-}
 {-# LANGUAGE FlexibleContexts      #-}
 {-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
@@ -56,6 +58,8 @@ module Statistics.Monoid.Numeric (
 import Data.Semigroup               (Semigroup(..))
 import Data.Monoid                  (Monoid(..))
 import Data.Data                    (Typeable,Data)
+import Data.Foldable                (Foldable)
+import Data.Traversable             (Traversable)
 import Data.Vector.Unboxed          (Unbox)
 import Data.Vector.Unboxed.Deriving (derivingUnbox)
 import Numeric.Sum
@@ -451,6 +455,11 @@ instance StatMonoid BinomAcc Bool where
   addValue (BinomAcc nS nT) False = BinomAcc  nS    (nT+1)
 
 
+-- | Value @a@ weighted by weight @w@
+data Weighted w a = Weighted w a
+              deriving (Show,Eq,Ord,Typeable,Data,Generic,Functor,Foldable,Traversable)
+
+
 
 ----------------------------------------------------------------
 -- Helpers
@@ -489,6 +498,11 @@ derivingUnbox "MaxD"
   [t| MaxD -> Double |]
   [| calcMaxD |]
   [| MaxD     |]
+
+derivingUnbox "Weighted"
+  [t| forall w a. (Unbox w, Unbox a) => Weighted w a -> (w,a) |]
+  [| \(Weighted w a) -> (w,a) |]
+  [| \(w,a) -> Weighted w a   |]
 
 -- $references
 --

@@ -32,7 +32,6 @@ module Statistics.Monoid.Class
   , HasVariance(..)
     -- * Data types
   , Pair(..)
-  , Weighted(..)
   ) where
 
 import           Data.Data        (Typeable,Data)
@@ -262,18 +261,8 @@ instance (StatMonoid a x, StatMonoid b y) => StatMonoid (PPair a b) (x,y) where
 
 
 
--- | Value @a@ weighted by weight @w@
-data Weighted w a = Weighted w a
-              deriving (Show,Eq,Ord,Typeable,Data,Generic,Functor,F.Foldable,Traversable)
-
-
-
 
 derivingUnbox "Pair"
   [t| forall a b. (Unbox a, Unbox b) => Pair a b -> (a,b) |]
   [| \(Pair a b) -> (a,b) |]
   [| \(a,b) -> Pair a b   |]
-derivingUnbox "Weighted"
-  [t| forall w a. (Unbox w, Unbox a) => Weighted w a -> (w,a) |]
-  [| \(Weighted w a) -> (w,a) |]
-  [| \(w,a) -> Weighted w a   |]
