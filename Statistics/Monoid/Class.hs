@@ -1,4 +1,5 @@
 {-# LANGUAGE BangPatterns          #-}
+{-# LANGUAGE DefaultSignatures     #-}
 {-# LANGUAGE DeriveDataTypeable    #-}
 {-# LANGUAGE DeriveFoldable        #-}
 {-# LANGUAGE DeriveFunctor         #-}
@@ -24,16 +25,18 @@ module Statistics.Monoid.Class
     -- * Ad-hoc type classes for central moments
   , CalcCount(..)
   , CalcMean(..)
+  , HasMean(..)
   , CalcVariance(..)
+  , HasVariance(..)
   , calcStddev
   , calcStddevML
-    -- ** Total variance
-  , HasMean(..)
-  , HasVariance(..)
+  , getStddev
+  , getStddevML
     -- * Data types
   , Pair(..)
   ) where
 
+import           Control.Monad.Catch
 import           Data.Data        (Typeable,Data)
 import           Data.Monoid      hiding ((<>))
 import           Data.Semigroup   (Semigroup(..))
@@ -158,58 +161,58 @@ instance Real a => StatMonoid KB2Sum a where
 -- Ad-hoc type class
 ----------------------------------------------------------------
 
--- | Accumulator could be used to evaluate number of elements in
---   sample.
+-- | Value from which we can efficiently extract number of elements in
+--   sample it represents.
 class CalcCount m where
-  -- | Number of elements in sample
+  -- | /Assumed O(1)/. Number of elements in sample.
   calcCount :: m -> Int
 
--- | Monoids which could be used to calculate sample mean:
---
---   \[ \bar{x} = \frac{1}{N}\sum_{i=1}^N{x_i} \]
+-- | Value from which we can efficiently calculate mean of sample or
+--   distribution.
 class CalcMean m where
-  -- | Returns @Nothing@ if there isn't enough data to make estimate.
+  -- | /Assumed O(1)/ Returns @Nothing@ if there isn't enough data to
+  --   make estimate or distribution doesn't have defined mean.
   calcMean :: m -> Maybe Double
+  default calcMean :: HasMean m => m -> Maybe Double
+  calcMean = return . getMean
 
--- | Monoids which could be used to calculate sample variance. Both
---   methods return @Nothing@ if there isn't enough data to make
---   estimate.
-class CalcVariance m where
-  -- | Calculate unbiased estimate of variance:
-  --
-  --   \[ \sigma^2 = \frac{1}{N-1}\sum_{i=1}^N(x_i - \bar{x})^2 \]
-  calcVariance   :: m -> Maybe Double
-  -- | Calculate maximum likelihood estimate of variance:
-  --
-  --   \[ \sigma^2 = \frac{1}{N}\sum_{i=1}^N(x_i - \bar{x})^2 \]
-  calcVarianceML :: m -> Maybe Double
-
--- | Calculate sample standard deviation from unbiased estimation of
---   variance:
---
---   \[ \sigma = \sqrt{\frac{1}{N-1}\sum_{i=1}^N(x_i - \bar{x})^2 } \]
-calcStddev :: CalcVariance m => m -> Maybe Double
-calcStddev = fmap sqrt . calcVariance
-
--- | Calculate sample standard deviation from maximum likelihood
---   estimation of variance:
---
---   \[ \sigma = \sqrt{\frac{1}{N}\sum_{i=1}^N(x_i - \bar{x})^2 } \]
-calcStddevML :: CalcVariance m => m -> Maybe Double
-calcStddevML = fmap sqrt . calcVarianceML
-
-
--- | Value from which we can efficiently extract mean
+-- | Same as 'CalcMean' but should never fail
 class CalcMean m => HasMean m where
   getMean :: m -> Double
 
+
+-- | Values from which we can efficiently compute estimate of sample
+--   variance or distribution variance. It has two methods: one which
+--   applies bias correction to estimate and another that returns
+--   maximul likelyhood estimate. For distribution they should return
+--   same value.
+class CalcVariance m where
+  -- | /Assumed O(1)/ Calculate unbiased estimate of variance:
+  calcVariance   :: m -> Maybe Double
+  -- | /Assumed O(1)/ Calculate maximum likelihood estimate of variance:
+  calcVarianceML :: m -> Maybe Double
+
+-- | Same as 'CalcVariance' but never fails
 class CalcVariance m => HasVariance m where
   getVariance   :: m -> Double
   getVarianceML :: m -> Double
 
+
+-- | Calculate sample standard deviation from unbiased estimation of
+--   variance.
+calcStddev :: CalcVariance m => m -> Maybe Double
+calcStddev = fmap sqrt . calcVariance
+
+-- | Calculate sample standard deviation from maximum likelihood
+--   estimation of variance.
+calcStddevML :: CalcVariance m => m -> Maybe Double
+calcStddevML = fmap sqrt . calcVarianceML
+
+-- | Same as 'calcStddev' but never fails
 getStddev :: HasVariance m => m -> Double
 getStddev = sqrt . getVariance
 
+-- | Same as 'calcStddevML' but never fails
 getStddevML :: HasVariance m => m -> Double
 getStddevML = sqrt . getVarianceML
 
