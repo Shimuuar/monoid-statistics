@@ -51,6 +51,8 @@ module Statistics.Monoid.Numeric (
   , CalcVariance(..)
   , calcStddev
   , calcStddevML
+    -- * Rest
+  , Weighted(..)
     -- * References
     -- $references
   ) where
