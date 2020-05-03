@@ -32,15 +32,19 @@ module Statistics.Monoid.Class
   , calcStddevML
   , getStddev
   , getStddevML
+    -- * Exception handling
+  , Partial(..)
+  , SampleError(..)
     -- * Data types
   , Pair(..)
   ) where
 
-import           Control.Monad.Catch
-import           Data.Data        (Typeable,Data)
-import           Data.Monoid      hiding ((<>))
-import           Data.Semigroup   (Semigroup(..))
-import           Data.Traversable (Traversable)
+import           Control.Exception
+import           Control.Monad.Catch (MonadThrow(..))
+import           Data.Data           (Typeable,Data)
+import           Data.Monoid         hiding ((<>))
+import           Data.Semigroup      (Semigroup(..))
+import           Data.Traversable    (Traversable)
 import           Data.Vector.Unboxed          (Unbox)
 import           Data.Vector.Unboxed.Deriving (derivingUnbox)
 import qualified Data.Foldable       as F
@@ -163,17 +167,17 @@ instance Real a => StatMonoid KB2Sum a where
 
 -- | Value from which we can efficiently extract number of elements in
 --   sample it represents.
-class CalcCount m where
+class CalcCount a where
   -- | /Assumed O(1)/. Number of elements in sample.
-  calcCount :: m -> Int
+  calcCount :: a -> Int
 
 -- | Value from which we can efficiently calculate mean of sample or
 --   distribution.
-class CalcMean m where
+class CalcMean a where
   -- | /Assumed O(1)/ Returns @Nothing@ if there isn't enough data to
   --   make estimate or distribution doesn't have defined mean.
-  calcMean :: m -> Maybe Double
-  default calcMean :: HasMean m => m -> Maybe Double
+  calcMean :: MonadThrow m => a -> m Double
+  default calcMean :: (MonadThrow m, HasMean a) => a -> m Double
   calcMean = return . getMean
 
 -- | Same as 'CalcMean' but should never fail
@@ -186,35 +190,80 @@ class CalcMean m => HasMean m where
 --   applies bias correction to estimate and another that returns
 --   maximul likelyhood estimate. For distribution they should return
 --   same value.
-class CalcVariance m where
+class CalcVariance a where
   -- | /Assumed O(1)/ Calculate unbiased estimate of variance:
-  calcVariance   :: m -> Maybe Double
+  calcVariance   :: MonadThrow m => a -> m Double
   -- | /Assumed O(1)/ Calculate maximum likelihood estimate of variance:
-  calcVarianceML :: m -> Maybe Double
+  calcVarianceML :: MonadThrow m => a -> m Double
 
 -- | Same as 'CalcVariance' but never fails
-class CalcVariance m => HasVariance m where
-  getVariance   :: m -> Double
-  getVarianceML :: m -> Double
+class CalcVariance a => HasVariance a where
+  getVariance   :: a -> Double
+  getVarianceML :: a -> Double
 
 
 -- | Calculate sample standard deviation from unbiased estimation of
 --   variance.
-calcStddev :: CalcVariance m => m -> Maybe Double
+calcStddev :: (MonadThrow m, CalcVariance a) => a -> m Double
 calcStddev = fmap sqrt . calcVariance
 
 -- | Calculate sample standard deviation from maximum likelihood
 --   estimation of variance.
-calcStddevML :: CalcVariance m => m -> Maybe Double
+calcStddevML :: (MonadThrow m, CalcVariance a) => a -> m Double
 calcStddevML = fmap sqrt . calcVarianceML
 
 -- | Same as 'calcStddev' but never fails
-getStddev :: HasVariance m => m -> Double
+getStddev :: HasVariance a => a -> Double
 getStddev = sqrt . getVariance
 
 -- | Same as 'calcStddevML' but never fails
-getStddevML :: HasVariance m => m -> Double
+getStddevML :: HasVariance a => a -> Double
 getStddevML = sqrt . getVarianceML
+
+
+----------------------------------------------------------------
+-- Exceptions
+----------------------------------------------------------------
+
+-- | Identity monad which is used to encode partial functions for
+--   'MonadThrow' based error handling. Its @MonadThrow@ instance
+--   just throws normal exception.
+newtype Partial a = Partial a
+  deriving (Show, Read, Eq, Ord, Typeable, Data, Generic)
+
+-- | Call function in partial manner. For example
+--
+-- > partial . mean
+--
+--   will throw an exception when called with empty vector as input
+partial :: Partial a -> a
+partial (Partial x) = x
+
+instance Functor Partial where
+  fmap f (Partial a) = Partial (f a)
+
+instance Applicative Partial where
+  pure = Partial
+  Partial f <*> Partial a = Partial (f a)
+
+instance Monad Partial where
+  return = Partial
+  Partial a >>= f = f a
+  (!_) >> f = f
+
+instance MonadThrow Partial where
+  throwM = throw
+
+-- | Exception which is thrown when we can't compute some value
+data SampleError
+  = EmptySample String
+  -- ^ @EmptySample function@: We're trying to compute quantity that 
+  | InvalidSample String String
+  -- ^ @InvalidSample function descripton@ quantity in question could
+  --   not be computed for some other reason
+  deriving Show
+
+instance Exception SampleError
 
 
 ----------------------------------------------------------------

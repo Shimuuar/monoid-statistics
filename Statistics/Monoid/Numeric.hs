@@ -55,6 +55,7 @@ module Statistics.Monoid.Numeric (
     -- $references
   ) where
 
+import Control.Monad.Catch          (MonadThrow(..))
 import Data.Semigroup               (Semigroup(..))
 import Data.Monoid                  (Monoid(..))
 import Data.Data                    (Typeable,Data)
@@ -154,8 +155,8 @@ instance Real a => StatMonoid MeanNaive a where
 instance CalcCount MeanNaive where
   calcCount (MeanNaive n _) = n
 instance CalcMean MeanNaive where
-  calcMean (MeanNaive 0 _) = Nothing
-  calcMean (MeanNaive n s) = Just (s / fromIntegral n)
+  calcMean (MeanNaive 0 _) = throwM $ EmptySample "Statistics.Monoid.Numeric.MeanNaive: calcMean"
+  calcMean (MeanNaive n s) = return (s / fromIntegral n)
 
 
 ----------------------------------------------------------------
@@ -189,8 +190,8 @@ instance Real a => StatMonoid MeanKBN a where
 instance CalcCount MeanKBN where
   calcCount (MeanKBN n _) = n
 instance CalcMean MeanKBN where
-  calcMean (MeanKBN 0 _) = Nothing
-  calcMean (MeanKBN n s) = Just (kbn s / fromIntegral n)
+  calcMean (MeanKBN 0 _) = throwM $ EmptySample "Statistics.Monoid.Numeric.MeanKBN: calcMean"
+  calcMean (MeanKBN n s) = return (kbn s / fromIntegral n)
 
 
 ----------------------------------------------------------------
@@ -223,8 +224,8 @@ instance (Real w, Real a) => StatMonoid WMeanNaive (Weighted w a) where
 
 instance CalcMean WMeanNaive where
   calcMean (WMeanNaive w s)
-    | w <= 0    = Nothing
-    | otherwise = Just (s / w)
+    | w <= 0    = throwM $ EmptySample "Statistics.Monoid.Numeric.WMeanNaive: calcMean"
+    | otherwise = return (s / w)
 
 ----------------------------------------------------------------
 
@@ -257,8 +258,8 @@ instance (Real w, Real a) => StatMonoid WMeanKBN (Weighted w a) where
 
 instance CalcMean WMeanKBN where
   calcMean (WMeanKBN (kbn -> w) (kbn -> s))
-    | w <= 0    = Nothing
-    | otherwise = Just (s / w)
+    | w <= 0    = throwM $ EmptySample "Statistics.Monoid.Numeric.WMeanKBN: calcMean"
+    | otherwise = return (s / w)
 
 
 ----------------------------------------------------------------
@@ -319,16 +320,20 @@ instance CalcCount Variance where
   calcCount (Variance n _ _) = n
 
 instance CalcMean Variance where
-  calcMean (Variance 0 _ _) = Nothing
-  calcMean (Variance n s _) = Just (s / fromIntegral n)
+  calcMean (Variance 0 _ _) = throwM $ EmptySample "Statistics.Monoid.Numeric.Variance: calcMean"
+  calcMean (Variance n s _) = return (s / fromIntegral n)
 
 instance CalcVariance Variance where
   calcVariance (Variance n _ s)
-    | n < 2     = Nothing
-    | otherwise = Just $! s / fromIntegral (n - 1)
+    | n < 2     = throwM $ InvalidSample
+                    "Statistics.Monoid.Numeric.Variance: calcVariance"
+                    "Need at least 2 elements"
+    | otherwise = return $! s / fromIntegral (n - 1)
   calcVarianceML (Variance n _ s)
-    | n < 1     = Nothing
-    | otherwise = Just $! s / fromIntegral n
+    | n < 1     = throwM $ InvalidSample
+                    "Statistics.Monoid.Numeric.Variance: calcVarianceML"
+                    "Need at least 1 element"
+    | otherwise = return $! s / fromIntegral n
 
 
 

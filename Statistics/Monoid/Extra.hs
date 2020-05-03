@@ -19,6 +19,7 @@ module Statistics.Monoid.Extra (
     -- $references
   ) where
 
+import Control.Monad.Catch          (MonadThrow(..))
 import Data.Semigroup               (Semigroup(..))
 import Data.Monoid                  (Monoid(..))
 import Data.Data                    (Typeable,Data)
@@ -49,14 +50,14 @@ asMeanKahan = id
 
 
 instance Semigroup MeanKahan where
-  (<>) = mappend
+  MeanKahan 0  _  <> m               = m
+  m               <> MeanKahan 0  _  = m
+  MeanKahan n1 s1 <> MeanKahan n2 s2 = MeanKahan (n1+n2) (s1 <> s2)
   {-# INLINE (<>) #-}
 
 instance Monoid MeanKahan where
-  mempty = MeanKahan 0 mempty
-  MeanKahan 0  _  `mappend` m               = m
-  m               `mappend` MeanKahan 0  _  = m
-  MeanKahan n1 s1 `mappend` MeanKahan n2 s2 = MeanKahan (n1+n2) (s1 `mappend` s2)
+  mempty  = MeanKahan 0 mempty
+  mappend = (<>)
 
 instance Real a => StatMonoid MeanKahan a where
   addValue (MeanKahan n m) x = MeanKahan (n+1) (addValue m x)
@@ -64,8 +65,8 @@ instance Real a => StatMonoid MeanKahan a where
 instance CalcCount MeanKahan where
   calcCount (MeanKahan n _) = n
 instance CalcMean MeanKahan where
-  calcMean (MeanKahan 0 _) = Nothing
-  calcMean (MeanKahan n s) = Just (kahan s / fromIntegral n)
+  calcMean (MeanKahan 0 _) = throwM $ EmptySample "Statistics.Monoid.Extra.WelfordMean"
+  calcMean (MeanKahan n s) = return (kahan s / fromIntegral n)
 
 
 -- | Incremental calculation of mean. Note that this algorithm doesn't
@@ -114,8 +115,8 @@ instance Real a => StatMonoid WelfordMean a where
 instance CalcCount WelfordMean where
   calcCount (WelfordMean n _) = n
 instance CalcMean WelfordMean where
-  calcMean (WelfordMean 0 _) = Nothing
-  calcMean (WelfordMean _ m) = Just m
+  calcMean (WelfordMean 0 _) = throwM $ EmptySample "Statistics.Monoid.Extra.WelfordMean"
+  calcMean (WelfordMean _ m) = return m
 
 
 
