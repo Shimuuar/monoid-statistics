@@ -39,7 +39,6 @@ module Statistics.Monoid.Class
   , Pair(..)
   ) where
 
-import           Control.Applicative (Applicative(..)) -- GHC<8.0
 import           Control.Exception
 import           Control.Monad.Catch (MonadThrow(..))
 import           Data.Data           (Typeable,Data)
