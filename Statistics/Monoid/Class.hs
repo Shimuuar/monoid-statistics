@@ -280,8 +280,8 @@ instance (Semigroup a, Semigroup b) => Semigroup (Pair a b) where
   {-# INLINABLE (<>) #-}
 
 instance (Monoid a, Monoid b) => Monoid (Pair a b) where
-  mempty  = Pair mempty mempty
-  mappend = (<>)
+  mempty = Pair mempty mempty
+  Pair x y `mappend` Pair x' y' = Pair (x `mappend` x') (y `mappend` y')
   {-# INLINABLE mempty  #-}
   {-# INLINABLE mappend #-}
 
