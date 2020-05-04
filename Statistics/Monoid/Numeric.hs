@@ -86,24 +86,19 @@ asCount :: CountG a -> CountG a
 asCount = id
 
 instance Integral a => Semigroup (CountG a) where
-  (<>) = mappend
-  {-# INLINE (<>) #-}
+  CountG i <> CountG j = CountG (i + j)
 
 instance Integral a => Monoid (CountG a) where
-  mempty                      = CountG 0
-  CountG i `mappend` CountG j = CountG (i + j)
-  {-# INLINE mempty  #-}
-  {-# INLINE mappend #-}
+  mempty  = CountG 0
+  mappend = (<>)
 
 instance (Integral a) => StatMonoid (CountG a) b where
   singletonMonoid _            = CountG 1
   addValue        (CountG n) _ = CountG (n + 1)
-  {-# INLINE singletonMonoid #-}
-  {-# INLINE addValue        #-}
+
 
 instance CalcCount (CountG Int) where
   calcCount = calcCountN
-  {-# INLINE calcCount #-}
 
 
 
@@ -138,14 +133,13 @@ asMeanNaive = id
 
 
 instance Semigroup MeanNaive where
-  (<>) = mappend
-  {-# INLINE (<>) #-}
+  MeanNaive 0  _  <> m               = m
+  m               <> MeanNaive 0  _  = m
+  MeanNaive n1 s1 <> MeanNaive n2 s2 = MeanNaive (n1+n2) (s1 + s2)
 
 instance Monoid MeanNaive where
-  mempty = MeanNaive 0 0
-  MeanNaive 0  _  `mappend` m               = m
-  m               `mappend` MeanNaive 0  _  = m
-  MeanNaive n1 s1 `mappend` MeanNaive n2 s2 = MeanNaive (n1+n2) (s1 + s2)
+  mempty  = MeanNaive 0 0
+  mappend = (<>)
 
 instance Real a => StatMonoid MeanNaive a where
   addValue (MeanNaive n m) x = MeanNaive (n+1) (m + realToFrac x)
@@ -173,15 +167,14 @@ asMeanKBN = id
 
 
 instance Semigroup MeanKBN where
-  (<>) = mappend
-  {-# INLINE (<>) #-}
+  MeanKBN 0  _  <> m             = m
+  m             <> MeanKBN 0  _  = m
+  MeanKBN n1 s1 <> MeanKBN n2 s2 = MeanKBN (n1+n2) (s1 <> s2)
 
 instance Monoid MeanKBN where
-  mempty = MeanKBN 0 mempty
-  MeanKBN 0  _  `mappend` m             = m
-  m             `mappend` MeanKBN 0  _  = m
-  MeanKBN n1 s1 `mappend` MeanKBN n2 s2 = MeanKBN (n1+n2) (s1 `mappend` s2)
-
+  mempty  = MeanKBN 0 mempty
+  mappend = (<>)
+  
 instance Real a => StatMonoid MeanKBN a where
   addValue (MeanKBN n m) x = MeanKBN (n+1) (addValue m x)
   {-# INLINE addValue #-}
@@ -206,12 +199,11 @@ asWMeanNaive = id
 
 
 instance Semigroup WMeanNaive where
-  (<>) = mappend
-  {-# INLINE (<>) #-}
+  WMeanNaive w1 s1 <> WMeanNaive w2 s2 = WMeanNaive (w1 + w2) (s1 + s2)
 
 instance Monoid WMeanNaive where
-  mempty = WMeanNaive 0 0
-  WMeanNaive w1 s1 `mappend` WMeanNaive w2 s2 = WMeanNaive (w1 + w2) (s1 + s2)
+  mempty  = WMeanNaive 0 0
+  mappend = (<>)
 
 instance (Real w, Real a) => StatMonoid WMeanNaive (Weighted w a) where
   addValue (WMeanNaive n s) (Weighted w a)
@@ -240,12 +232,11 @@ asWMeanKBN = id
 
 
 instance Semigroup WMeanKBN where
-  (<>) = mappend
-  {-# INLINE (<>) #-}
+  WMeanKBN n1 s1 <> WMeanKBN n2 s2 = WMeanKBN (n1 <> n2) (s1 <> s2)
 
 instance Monoid WMeanKBN where
-  mempty = WMeanKBN mempty mempty
-  WMeanKBN n1 s1 `mappend` WMeanKBN n2 s2 = WMeanKBN (n1 `mappend` n2) (s1 `mappend` s2)
+  mempty  = WMeanKBN mempty mempty
+  mappend = (<>)
 
 instance (Real w, Real a) => StatMonoid WMeanKBN (Weighted w a) where
   addValue (WMeanKBN n m) (Weighted w a)
@@ -284,11 +275,9 @@ data Variance = Variance {-# UNPACK #-} !Int    --  Number of elements in the sa
 -- | Type restricted 'id '
 asVariance :: Variance -> Variance
 asVariance = id
-{-# INLINE asVariance #-}
 
 instance Semigroup Variance where
   (<>) = mappend
-  {-# INLINE (<>) #-}
 
 -- | Iterative algorithm for calculation of variance [Chan1979]
 instance Monoid Variance where
@@ -302,8 +291,6 @@ instance Monoid Variance where
       sumsq | n1 == 0   = sb
             | n2 == 0   = sa
             | otherwise = sa + sb + nom / ((na + nb) * na * nb)
-  {-# INLINE mempty #-}
-  {-# INLINE mappend #-}
 
 instance Real a => StatMonoid Variance a where
   addValue (Variance 0 _ _) x = singletonMonoid x
@@ -343,14 +330,13 @@ newtype Min a = Min { calcMin :: Maybe a }
               deriving (Show,Eq,Ord,Typeable,Data,Generic)
 
 instance Ord a => Semigroup (Min a) where
-  (<>) = mappend
-  {-# INLINE (<>) #-}
+  Min (Just a) <> Min (Just b) = Min (Just $! min a b)
+  Min a        <> Min Nothing  = Min a
+  Min Nothing  <> Min b        = Min b
 
 instance Ord a => Monoid (Min a) where
-  mempty = Min Nothing
-  Min (Just a) `mappend` Min (Just b) = Min (Just $! min a b)
-  Min a        `mappend` Min Nothing  = Min a
-  Min Nothing  `mappend` Min b        = Min b
+  mempty  = Min Nothing
+  mappend = (<>)
 
 instance (Ord a, a ~ a') => StatMonoid (Min a) a' where
   singletonMonoid a = Min (Just a)
@@ -363,14 +349,13 @@ newtype Max a = Max { calcMax :: Maybe a }
               deriving (Show,Eq,Ord,Typeable,Data,Generic)
 
 instance Ord a => Semigroup (Max a) where
-  (<>) = mappend
-  {-# INLINE (<>) #-}
+  Max (Just a) <> Max (Just b) = Max (Just $! max a b)
+  Max a        <> Max Nothing  = Max a
+  Max Nothing  <> Max b        = Max b
 
 instance Ord a => Monoid (Max a) where
-  mempty = Max Nothing
-  Max (Just a) `mappend` Max (Just b) = Max (Just $! max a b)
-  Max a        `mappend` Max Nothing  = Max a
-  Max Nothing  `mappend` Max b        = Max b
+  mempty  = Max Nothing
+  mappend = (<>)
 
 instance (Ord a, a ~ a') => StatMonoid (Max a) a' where
   singletonMonoid a = Max (Just a)
@@ -390,7 +375,6 @@ instance Eq MinD where
 
 instance Semigroup MinD where
   (<>) = mappend
-  {-# INLINE (<>) #-}
 
 -- N.B. forall (x :: Double) (x <= NaN) == False
 instance Monoid MinD where
@@ -399,8 +383,6 @@ instance Monoid MinD where
     | isNaN x   = MinD y
     | isNaN y   = MinD x
     | otherwise = MinD (min x y)
-  {-# INLINE mempty  #-}
-  {-# INLINE mappend #-}
 
 instance a ~ Double => StatMonoid MinD a where
   singletonMonoid = MinD
@@ -419,7 +401,6 @@ instance Eq MaxD where
 
 instance Semigroup MaxD where
   (<>) = mappend
-  {-# INLINE (<>) #-}
 
 instance Monoid MaxD where
   mempty = MaxD (0/0)
@@ -427,8 +408,6 @@ instance Monoid MaxD where
     | isNaN x   = MaxD y
     | isNaN y   = MaxD x
     | otherwise = MaxD (max x y)
-  {-# INLINE mempty  #-}
-  {-# INLINE mappend #-}
 
 instance a ~ Double => StatMonoid MaxD a where
   singletonMonoid = MaxD
@@ -448,7 +427,6 @@ asBinomAcc = id
 
 instance Semigroup BinomAcc where
   (<>) = mappend
-  {-# INLINE (<>) #-}
 
 instance Monoid BinomAcc where
   mempty = BinomAcc 0 0

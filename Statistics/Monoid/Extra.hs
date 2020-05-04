@@ -89,18 +89,18 @@ asWelfordMean :: WelfordMean -> WelfordMean
 asWelfordMean = id
 
 instance Semigroup WelfordMean where
-  (<>) = mappend
-  {-# INLINE (<>) #-}
-
-instance Monoid WelfordMean where
-  mempty = WelfordMean 0 0
-  mappend (WelfordMean 0 _) m = m
-  mappend m (WelfordMean 0 _) = m
-  mappend (WelfordMean n x) (WelfordMean k y)
+  WelfordMean 0 _ <> m = m
+  m <> WelfordMean 0 _ = m
+  WelfordMean n x <> WelfordMean k y
     = WelfordMean (n + k) ((x*n' + y*k') / (n' + k'))
     where
       n' = fromIntegral n
       k' = fromIntegral k
+  {-# INLINE (<>) #-}
+
+instance Monoid WelfordMean where
+  mempty  = WelfordMean 0 0
+  mappend = (<>)
   {-# INLINE mempty  #-}
   {-# INLINE mappend #-}
 
