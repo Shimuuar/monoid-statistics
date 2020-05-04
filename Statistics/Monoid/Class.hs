@@ -34,6 +34,7 @@ module Statistics.Monoid.Class
   , getStddevML
     -- * Exception handling
   , Partial(..)
+  , partial
   , SampleError(..)
     -- * Data types
   , Pair(..)
