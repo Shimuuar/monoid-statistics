@@ -31,9 +31,7 @@ import Numeric.Sum
 import GHC.Generics                 (Generic)
 
 import Statistics.Monoid.Class
--- COMPAT
-import qualified Data.Vector.Generic         -- Needed for GHC7.4
-import qualified Data.Vector.Generic.Mutable -- Needed for GHC7.4
+
 
 
 ----------------------------------------------------------------
