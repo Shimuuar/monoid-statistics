@@ -16,6 +16,8 @@ module Statistics.Monoid.Extra (
   , asWelfordMean
   , MeanKahan(..)
   , asMeanKahan
+  , MeanKB2(..)
+  , asMeanKB2
     -- $references
   ) where
 
@@ -37,6 +39,35 @@ import qualified Data.Vector.Generic.Mutable -- Needed for GHC7.4
 ----------------------------------------------------------------
 -- Mean
 ----------------------------------------------------------------
+
+
+-- | Incremental calculation of mean which uses second-order
+--   compensated Kahan-Babuška summation. In most cases
+--   'Statistics.Monoid.Numeric.KBNSum' should provide enough
+--   precision.
+data MeanKB2 = MeanKB2 !Int {-# UNPACK #-} !KB2Sum
+             deriving (Show,Eq)
+
+asMeanKB2 :: MeanKB2 -> MeanKB2
+asMeanKB2 = id
+
+instance Semigroup MeanKB2 where
+  MeanKB2 0  _  <> m             = m
+  m             <> MeanKB2 0  _  = m
+  MeanKB2 n1 s1 <> MeanKB2 n2 s2 = MeanKB2 (n1+n2) (s1 <> s2)
+
+instance Monoid MeanKB2 where
+  mempty  = MeanKB2 0 mempty
+  mappend = (<>)
+
+instance Real a => StatMonoid MeanKB2 a where
+  addValue (MeanKB2 n m) x = MeanKB2 (n+1) (addValue m x)
+
+instance CalcMean MeanKB2 where
+  calcMean (MeanKB2 0 _) = throwM $ EmptySample "Statistics.Monoid.Extra.MeanKB2"
+  calcMean (MeanKB2 n s) = return $! kb2 s / fromIntegral n
+
+
 
 -- | Incremental calculation of mean. Sum of elements is calculated
 --   using compensated Kahan summation. It's provided only for sake of
