@@ -182,8 +182,8 @@ class CalcMean a where
   --
   --   \[ \bar{x} = \frac{1}{N}\sum_{i=1}^N{x_i} \]
   calcMean :: MonadThrow m => a -> m Double
-  default calcMean :: (MonadThrow m, HasMean a) => a -> m Double
-  calcMean = return . getMean
+  default calcMean :: (Applicative m, HasMean a) => a -> m Double
+  calcMean = pure . getMean
 
 -- | Same as 'CalcMean' but should never fail
 class CalcMean a => HasMean a where
@@ -199,11 +199,15 @@ class CalcVariance a where
   -- | /Assumed O(1)/ Calculate unbiased estimate of variance:
   --
   --   \[ \sigma^2 = \frac{1}{N-1}\sum_{i=1}^N(x_i - \bar{x})^2 \]
-  calcVariance   :: MonadThrow m => a -> m Double
+  calcVariance :: MonadThrow m => a -> m Double
+  default calcVariance :: (Applicative m, HasVariance a) => a -> m Double
+  calcVariance = pure . getVariance
   -- | /Assumed O(1)/ Calculate maximum likelihood estimate of variance:
   --
   --   \[ \sigma^2 = \frac{1}{N}\sum_{i=1}^N(x_i - \bar{x})^2 \]
   calcVarianceML :: MonadThrow m => a -> m Double
+  default calcVarianceML :: (Applicative m, HasVariance a) => a -> m Double
+  calcVarianceML = pure . getVarianceML
 
 -- | Same as 'CalcVariance' but never fails
 class CalcVariance a => HasVariance a where
