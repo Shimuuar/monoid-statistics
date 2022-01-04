@@ -64,6 +64,18 @@ test-suite monoid-statistics-tests
                , tasty-hunit
                , QuickCheck
 
+test-suite monoid-statistics-doctest
+  if impl(ghcjs)
+    buildable: False
+  type:             exitcode-stdio-1.0
+  main-is:          doctests.hs
+  hs-source-dirs:   tests
+  default-language: Haskell2010
+  build-depends:
+        base                >=4.9  && <5
+      , doctest             >=0.15 && <0.20
+      , monoid-statistics   -any
+
 benchmark monoid-stat-bench
   default-language: Haskell2010
   type:             exitcode-stdio-1.0
