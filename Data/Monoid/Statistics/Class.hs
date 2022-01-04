@@ -89,11 +89,16 @@ class Monoid m => StatMonoid m a where
 
 -- | Calculate statistic over 'Foldable'. It's implemented in terms of
 --   foldl'.
+--
+-- >>> reduceSample @Mean [1,2,3,4]
+-- MeanKBN 4 (KBNSum 10.0 0.0)
+-- >>> calcMean $ reduceSample @Mean [1,2,3,4] :: Maybe Double
+-- Just 2.5
 reduceSample :: forall m a f. (StatMonoid m a, F.Foldable f) => f a -> m
 reduceSample = F.foldl' addValue mempty
 
--- | Calculate statistic over vector. It's implemented in terms of
---   foldl'.
+-- | Calculate statistic over vector. Works in same was as
+-- 'reduceSample' but works for vectors.
 reduceSampleVec :: forall m a v. (StatMonoid m a, G.Vector v a) => v a -> m
 reduceSampleVec = G.foldl' addValue mempty
 {-# INLINE reduceSampleVec #-}
@@ -174,13 +179,15 @@ class CalcCount a where
 class CalcMean a where
   -- | /Assumed O(1)/ Returns @Nothing@ if there isn't enough data to
   --   make estimate or distribution doesn't have defined mean.
+  --
+  --   \[ \bar{x} = \frac{1}{N}\sum_{i=1}^N{x_i} \]
   calcMean :: MonadThrow m => a -> m Double
   default calcMean :: (MonadThrow m, HasMean a) => a -> m Double
   calcMean = return . getMean
 
 -- | Same as 'CalcMean' but should never fail
-class CalcMean m => HasMean m where
-  getMean :: m -> Double
+class CalcMean a => HasMean a where
+  getMean :: a -> Double
 
 
 -- | Values from which we can efficiently compute estimate of sample
@@ -190,8 +197,12 @@ class CalcMean m => HasMean m where
 --   same value.
 class CalcVariance a where
   -- | /Assumed O(1)/ Calculate unbiased estimate of variance:
+  --
+  --   \[ \sigma^2 = \frac{1}{N-1}\sum_{i=1}^N(x_i - \bar{x})^2 \]
   calcVariance   :: MonadThrow m => a -> m Double
   -- | /Assumed O(1)/ Calculate maximum likelihood estimate of variance:
+  --
+  --   \[ \sigma^2 = \frac{1}{N}\sum_{i=1}^N(x_i - \bar{x})^2 \]
   calcVarianceML :: MonadThrow m => a -> m Double
 
 -- | Same as 'CalcVariance' but never fails
