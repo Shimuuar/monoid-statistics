@@ -58,11 +58,7 @@ module Statistics.Monoid.Numeric (
   ) where
 
 import Control.Monad.Catch          (MonadThrow(..))
-import Data.Semigroup               (Semigroup(..))
-import Data.Monoid                  (Monoid(..))
 import Data.Data                    (Typeable,Data)
-import Data.Foldable                (Foldable)
-import Data.Traversable             (Traversable)
 import Data.Vector.Unboxed          (Unbox)
 import Data.Vector.Unboxed.Deriving (derivingUnbox)
 import Numeric.Sum

@@ -43,9 +43,7 @@ module Statistics.Monoid.Class
 import           Control.Exception
 import           Control.Monad.Catch (MonadThrow(..))
 import           Data.Data           (Typeable,Data)
-import           Data.Monoid         hiding ((<>))
-import           Data.Semigroup      (Semigroup(..))
-import           Data.Traversable    (Traversable)
+import           Data.Monoid
 import           Data.Vector.Unboxed          (Unbox)
 import           Data.Vector.Unboxed.Deriving (derivingUnbox)
 import qualified Data.Foldable       as F
