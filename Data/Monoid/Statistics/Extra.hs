@@ -99,10 +99,10 @@ instance CalcMean MeanKahan where
 --   offer better numeric precision than plain summation. Its only
 --   advantage is protection against double overflow:
 --
---   > λ> calcMean $ asMeanKBN     $ reduceSample (replicate 100 1e308)
---   > Just NaN
---   > λ> calcMean $ asWelfordMean $ reduceSample (replicate 100 1e308)
---   > Just 1.0e308
+-- >>> calcMean @MeanKBN     $ reduceSample (replicate 100 1e308) :: Maybe Double
+-- Just NaN
+-- >>> calcMean @WelfordMean $ reduceSample (replicate 100 1e308) :: Maybe Double
+-- Just 1.0e308
 --
 --   Unless this feature is needed 'Data.Monoid.Statistics.Numeric.KBNSum'
 --   should be used. Algorithm is due to Welford [Welford1962]
@@ -168,3 +168,7 @@ derivingUnbox "WelfordMean"
 --   products. /Technometrics/
 --   4(3):419-420. <http://www.jstor.org/stable/1266577>
 
+-- $setup
+--
+-- >>> :set -XTypeApplications
+-- >>> import Data.Monoid.Statistics.Numeric
