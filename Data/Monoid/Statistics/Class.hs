@@ -229,11 +229,11 @@ getStddevML = sqrt . getVarianceML
 newtype Partial a = Partial a
   deriving (Show, Read, Eq, Ord, Typeable, Data, Generic)
 
--- | Call function in partial manner. For example
+-- | Convert error to IO exception. This way one could for example
+--   convert case when some statistics is not defined to an exception:
 --
--- > partial . mean
---
---   will throw an exception when called with empty vector as input
+-- >>> calcMean $ reduceSample @Mean []
+-- *** Exception: EmptySample "Data.Monoid.Statistics.Numeric.MeanKBN: calcMean"
 partial :: Partial a -> a
 partial (Partial x) = x
 
@@ -317,3 +317,7 @@ derivingUnbox "Pair"
   [t| forall a b. (Unbox a, Unbox b) => Pair a b -> (a,b) |]
   [| \(Pair a b) -> (a,b) |]
   [| \(a,b) -> Pair a b   |]
+
+-- $setup
+--
+-- >>> import Data.Monoid.Statistics.Numeric
