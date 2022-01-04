@@ -12,7 +12,7 @@
 {-# LANGUAGE ViewPatterns          #-}
 -- |
 -- Monoids for calculating various statistics in constant space
-module Statistics.Monoid.Numeric (
+module Data.Monoid.Statistics.Numeric (
     -- * Mean & Variance
     -- ** Number of elements
     CountG(..)
@@ -64,7 +64,7 @@ import Data.Vector.Unboxed.Deriving (derivingUnbox)
 import Numeric.Sum
 import GHC.Generics                 (Generic)
 
-import Statistics.Monoid.Class
+import Data.Monoid.Statistics.Class
 
 
 ----------------------------------------------------------------
@@ -144,7 +144,7 @@ instance Real a => StatMonoid MeanNaive a where
 instance CalcCount MeanNaive where
   calcCount (MeanNaive n _) = n
 instance CalcMean MeanNaive where
-  calcMean (MeanNaive 0 _) = throwM $ EmptySample "Statistics.Monoid.Numeric.MeanNaive: calcMean"
+  calcMean (MeanNaive 0 _) = throwM $ EmptySample "Data.Monoid.Statistics.Numeric.MeanNaive: calcMean"
   calcMean (MeanNaive n s) = return (s / fromIntegral n)
 
 
@@ -178,7 +178,7 @@ instance Real a => StatMonoid MeanKBN a where
 instance CalcCount MeanKBN where
   calcCount (MeanKBN n _) = n
 instance CalcMean MeanKBN where
-  calcMean (MeanKBN 0 _) = throwM $ EmptySample "Statistics.Monoid.Numeric.MeanKBN: calcMean"
+  calcMean (MeanKBN 0 _) = throwM $ EmptySample "Data.Monoid.Statistics.Numeric.MeanKBN: calcMean"
   calcMean (MeanKBN n s) = return (kbn s / fromIntegral n)
 
 
@@ -211,7 +211,7 @@ instance (Real w, Real a) => StatMonoid WMeanNaive (Weighted w a) where
 
 instance CalcMean WMeanNaive where
   calcMean (WMeanNaive w s)
-    | w <= 0    = throwM $ EmptySample "Statistics.Monoid.Numeric.WMeanNaive: calcMean"
+    | w <= 0    = throwM $ EmptySample "Data.Monoid.Statistics.Numeric.WMeanNaive: calcMean"
     | otherwise = return (s / w)
 
 ----------------------------------------------------------------
@@ -244,7 +244,7 @@ instance (Real w, Real a) => StatMonoid WMeanKBN (Weighted w a) where
 
 instance CalcMean WMeanKBN where
   calcMean (WMeanKBN (kbn -> w) (kbn -> s))
-    | w <= 0    = throwM $ EmptySample "Statistics.Monoid.Numeric.WMeanKBN: calcMean"
+    | w <= 0    = throwM $ EmptySample "Data.Monoid.Statistics.Numeric.WMeanKBN: calcMean"
     | otherwise = return (s / w)
 
 
@@ -302,18 +302,18 @@ instance CalcCount Variance where
   calcCount (Variance n _ _) = n
 
 instance CalcMean Variance where
-  calcMean (Variance 0 _ _) = throwM $ EmptySample "Statistics.Monoid.Numeric.Variance: calcMean"
+  calcMean (Variance 0 _ _) = throwM $ EmptySample "Data.Monoid.Statistics.Numeric.Variance: calcMean"
   calcMean (Variance n s _) = return (s / fromIntegral n)
 
 instance CalcVariance Variance where
   calcVariance (Variance n _ s)
     | n < 2     = throwM $ InvalidSample
-                    "Statistics.Monoid.Numeric.Variance: calcVariance"
+                    "Data.Monoid.Statistics.Numeric.Variance: calcVariance"
                     "Need at least 2 elements"
     | otherwise = return $! s / fromIntegral (n - 1)
   calcVarianceML (Variance n _ s)
     | n < 1     = throwM $ InvalidSample
-                    "Statistics.Monoid.Numeric.Variance: calcVarianceML"
+                    "Data.Monoid.Statistics.Numeric.Variance: calcVarianceML"
                     "Need at least 1 element"
     | otherwise = return $! s / fromIntegral n
 

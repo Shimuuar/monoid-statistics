@@ -17,7 +17,7 @@
 -- Maintainer : Alexey Khudyakov <alexey.skladnoy@gmail.com>
 -- Stability  : experimental
 --
-module Statistics.Monoid.Class
+module Data.Monoid.Statistics.Class
   ( -- * Type class and helpers
     StatMonoid(..)
   , reduceSample
@@ -255,7 +255,8 @@ instance MonadThrow Partial where
 -- | Exception which is thrown when we can't compute some value
 data SampleError
   = EmptySample String
-  -- ^ @EmptySample function@: We're trying to compute quantity that 
+  -- ^ @EmptySample function@: We're trying to compute quantity that
+  --   is undefined for empty sample.
   | InvalidSample String String
   -- ^ @InvalidSample function descripton@ quantity in question could
   --   not be computed for some other reason

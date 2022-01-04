@@ -40,10 +40,10 @@ Library
                   , vector-th-unbox >=0.2.1.6
                   , math-functions  >=0.3
   --
-  Exposed-modules: Statistics.Monoid
-                   Statistics.Monoid.Class
-                   Statistics.Monoid.Numeric
-                   Statistics.Monoid.Extra
+  Exposed-modules: Data.Monoid.Statistics
+                   Data.Monoid.Statistics.Class
+                   Data.Monoid.Statistics.Numeric
+                   Data.Monoid.Statistics.Extra
 
 test-suite monoid-statistics-tests
   default-language: Haskell2010
