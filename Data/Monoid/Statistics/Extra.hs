@@ -99,9 +99,9 @@ instance CalcMean MeanKahan where
 --   offer better numeric precision than plain summation. Its only
 --   advantage is protection against double overflow:
 --
--- >>> calcMean @MeanKBN     $ reduceSample (replicate 100 1e308) :: Maybe Double
+-- >>> calcMean $ reduceSample @MeanKBN (replicate 100 1e308) :: Maybe Double
 -- Just NaN
--- >>> calcMean @WelfordMean $ reduceSample (replicate 100 1e308) :: Maybe Double
+-- >>> calcMean $ reduceSample @WelfordMean (replicate 100 1e308) :: Maybe Double
 -- Just 1.0e308
 --
 --   Unless this feature is needed 'Data.Monoid.Statistics.Numeric.KBNSum'

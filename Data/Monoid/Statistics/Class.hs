@@ -89,12 +89,12 @@ class Monoid m => StatMonoid m a where
 
 -- | Calculate statistic over 'Foldable'. It's implemented in terms of
 --   foldl'.
-reduceSample :: (F.Foldable f, StatMonoid m a) => f a -> m
+reduceSample :: forall m a f. (StatMonoid m a, F.Foldable f) => f a -> m
 reduceSample = F.foldl' addValue mempty
 
 -- | Calculate statistic over vector. It's implemented in terms of
 --   foldl'.
-reduceSampleVec :: (G.Vector v a, StatMonoid m a) => v a -> m
+reduceSampleVec :: forall m a v. (StatMonoid m a, G.Vector v a) => v a -> m
 reduceSampleVec = G.foldl' addValue mempty
 {-# INLINE reduceSampleVec #-}
 
