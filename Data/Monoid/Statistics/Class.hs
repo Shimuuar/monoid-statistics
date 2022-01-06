@@ -1,15 +1,17 @@
-{-# LANGUAGE BangPatterns          #-}
-{-# LANGUAGE DefaultSignatures     #-}
-{-# LANGUAGE DeriveDataTypeable    #-}
-{-# LANGUAGE DeriveFoldable        #-}
-{-# LANGUAGE DeriveFunctor         #-}
-{-# LANGUAGE DeriveGeneric         #-}
-{-# LANGUAGE DeriveTraversable     #-}
-{-# LANGUAGE FlexibleInstances     #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE RankNTypes            #-}
-{-# LANGUAGE TemplateHaskell       #-}
-{-# LANGUAGE TypeFamilies          #-}
+{-# LANGUAGE BangPatterns               #-}
+{-# LANGUAGE DefaultSignatures          #-}
+{-# LANGUAGE DeriveDataTypeable         #-}
+{-# LANGUAGE DeriveFoldable             #-}
+{-# LANGUAGE DeriveFunctor              #-}
+{-# LANGUAGE DeriveGeneric              #-}
+{-# LANGUAGE DeriveTraversable          #-}
+{-# LANGUAGE DerivingStrategies         #-}
+{-# LANGUAGE FlexibleInstances          #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE MultiParamTypeClasses      #-}
+{-# LANGUAGE RankNTypes                 #-}
+{-# LANGUAGE TemplateHaskell            #-}
+{-# LANGUAGE TypeFamilies               #-}
 -- |
 -- Module     : Data.Monoid.Statistics
 -- Copyright  : Copyright (c) 2010,2017, Alexey Khudyakov <alexey.skladnoy@gmail.com>
@@ -18,11 +20,12 @@
 -- Stability  : experimental
 --
 module Data.Monoid.Statistics.Class
-  ( -- * Type class and helpers
+  ( -- * Monoid Type class and helpers
     StatMonoid(..)
   , reduceSample
   , reduceSampleVec
-    -- * Ad-hoc type classes for central moments
+    -- * Ad-hoc type classes for select statistics
+    -- $adhoc
   , CalcCount(..)
   , CalcMean(..)
   , HasMean(..)
@@ -32,6 +35,7 @@ module Data.Monoid.Statistics.Class
   , calcStddevML
   , getStddev
   , getStddevML
+  , CalcViaHas(..)
     -- * Exception handling
   , Partial(..)
   , partial
@@ -54,10 +58,9 @@ import GHC.Generics (Generic)
 
 
 -- | This type class is used to express parallelizable constant space
---   algorithms for calculation of statistics. By definitions
---   /statistic/ is some measure of sample which doesn't depend on
---   order of elements (for example: mean, sum, number of elements,
---   variance, etc).
+--   algorithms for calculation of statistics. /Statistic/ is function
+--   of type @[a]→b@ which does not depend on order of elements. (for
+--   example: mean, sum, number of elements, variance, etc).
 --
 --   For many statistics it's possible to possible to construct
 --   constant space algorithm which is expressed as fold. Additionally
@@ -65,7 +68,7 @@ import GHC.Generics (Generic)
 --   fold accumulator to get statistic for union of two samples.
 --
 --   Thus for such algorithm we have value which corresponds to empty
---   sample, merge function which which corresponds to merging of two
+--   sample, function which which corresponds to merging of two
 --   samples, and single step of fold. Last one allows to evaluate
 --   statistic given data sample and first two form a monoid and allow
 --   parallelization: split data into parts, build estimate for each
@@ -89,7 +92,10 @@ class Monoid m => StatMonoid m a where
   {-# MINIMAL addValue | singletonMonoid #-}
 
 -- | Calculate statistic over 'Foldable'. It's implemented in terms of
---   foldl'.
+--   foldl'. Note that in cases when accumulator is immediately
+--   consumed by polymorphic function such as 'callMeam' its type
+--   becomes ambiguous. @TypeApplication@ then could be used to
+--   disambiguate.
 --
 -- >>> reduceSample @Mean [1,2,3,4]
 -- MeanKBN 4 (KBNSum 10.0 0.0)
@@ -169,6 +175,61 @@ instance Real a => StatMonoid KB2Sum a where
 -- Ad-hoc type class
 ----------------------------------------------------------------
 
+-- $adhoc
+--
+-- Type classes defined here allows to extract common statistics from
+-- estimators. it's assumed that quantities in question are already
+-- computed so extraction is cheap.
+--
+--
+-- ==== Error handling
+--
+-- Computation of statistics may fail. For example mean is not defined
+-- for an empty sample. @Maybe@ could be seen as easy way to handle
+-- this situation. But in many cases most convenient way to handle
+-- failure is to throw an exception. So failure is encoded by using
+-- polymorphic function of type @MonadThrow m ⇒ a → m X@.
+--
+-- Maybe types has instance, such as 'Maybe', 'Either'
+-- 'Control.Exception.SomeException', 'IO' and most transformers
+-- wrapping it. Notably this library defines 'Partial' monad which
+-- allows to convert failures to exception in pure setting.
+--
+-- >>> calcMean $ reduceSample @Mean []
+-- *** Exception: EmptySample "Data.Monoid.Statistics.Numeric.MeanKBN: calcMean"
+--
+-- >>> calcMean $ reduceSample @Mean [] :: Maybe Double
+-- Nothing
+--
+-- >>> import Control.Exception
+-- >>> calcMean $ reduceSample @Mean [] :: Either SomeException Double
+-- Left (EmptySample "Data.Monoid.Statistics.Numeric.MeanKBN: calcMean")
+--
+-- Last example uses IO
+--
+-- >>> calcMean $ reduceSample @Mean []
+-- *** Exception: EmptySample "Data.Monoid.Statistics.Numeric.MeanKBN: calcMean"
+--
+--
+-- ==== Deriving instances
+--
+-- Type classes come in two variants, one that allow failure and one
+-- for use in cases when quantity is always defined. This is not the
+-- case for estimators, but true for distributions and intended for
+-- such use cases. In that case 'CalcViaHas' could be used to derive
+-- necessary instances.
+--
+-- >>> :{
+-- data NormalDist = NormalDist !Double !Double
+--   deriving (CalcMean,CalcVariance) via CalcViaHas NormalDist
+-- instance HasMean NormalDist where
+--   getMean (NormalDist mu _) = mu
+-- instance HasVariance NormalDist where
+--   getVariance   (NormalDist _ s) = s
+--   getVarianceML (NormalDist _ s) = s
+-- :}
+
+
 -- | Value from which we can efficiently extract number of elements in
 --   sample it represents.
 class CalcCount a where
@@ -234,6 +295,16 @@ getStddev = sqrt . getVariance
 getStddevML :: HasVariance a => a -> Double
 getStddevML = sqrt . getVarianceML
 
+
+newtype CalcViaHas a = CalcViaHas a
+  deriving newtype (HasMean, HasVariance)
+
+instance HasMean a => CalcMean (CalcViaHas a) where
+  calcMean = pure . getMean
+
+instance HasVariance a => CalcVariance (CalcViaHas a) where
+  calcVariance   = pure . getVariance
+  calcVarianceML = pure . getVarianceML
 
 ----------------------------------------------------------------
 -- Exceptions
@@ -336,4 +407,5 @@ derivingUnbox "Pair"
 
 -- $setup
 --
+-- >>> :set -XDerivingVia
 -- >>> import Data.Monoid.Statistics.Numeric
