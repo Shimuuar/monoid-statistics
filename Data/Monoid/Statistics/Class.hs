@@ -49,6 +49,7 @@ import           Data.Vector.Unboxed.Deriving (derivingUnbox)
 import qualified Data.Foldable       as F
 import qualified Data.Vector.Generic as G
 import           Numeric.Sum
+import GHC.Stack    (HasCallStack)
 import GHC.Generics (Generic)
 
 
@@ -249,7 +250,7 @@ newtype Partial a = Partial a
 --
 -- >>> calcMean $ reduceSample @Mean []
 -- *** Exception: EmptySample "Data.Monoid.Statistics.Numeric.MeanKBN: calcMean"
-partial :: Partial a -> a
+partial :: HasCallStack => Partial a -> a
 partial (Partial x) = x
 
 instance Functor Partial where
