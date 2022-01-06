@@ -2,8 +2,6 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 --
 {-# OPTIONS_GHC -fno-warn-orphans #-}
-import Control.Applicative
-import Data.Monoid
 import Data.Typeable
 import Numeric.Sum
 import Test.Tasty
