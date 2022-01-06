@@ -71,6 +71,11 @@ test-suite monoid-statistics-tests
 test-suite monoid-statistics-doctest
   if impl(ghcjs)
     buildable: False
+  -- It seems GHC 9.0 & 9.2 chokes to death on examples with deriving via
+  if impl(ghc >= 9.0) && impl(ghc < 9.1)
+    buildable: False
+  if impl(ghc >= 9.2) && impl(ghc < 9.3)
+    buildable: False
   type:             exitcode-stdio-1.0
   main-is:          doctests.hs
   hs-source-dirs:   tests
