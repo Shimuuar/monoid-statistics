@@ -45,12 +45,6 @@ module Data.Monoid.Statistics.Numeric (
     -- * Binomial trials
   , BinomAcc(..)
   , asBinomAcc
-    -- * Accessors
-  , CalcCount(..)
-  , CalcMean(..)
-  , CalcVariance(..)
-  , calcStddev
-  , calcStddevML
     -- * Rest
   , Weighted(..)
     -- * References

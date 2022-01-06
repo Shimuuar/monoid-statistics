@@ -3,6 +3,10 @@
 - Type classes `CalcMean` and `CalcVar` are generalized to use `MonadThrow` to
   signal failure instead of using `Maybe` only
 
+- Functions for computing standard deviation are placed into type
+  classes. Sometimes we have standard deviation at hand, if distribution is
+  parameterized by it for example.
+
 - `Mean` now type synonym for `MeanKBN`.
 
 - `WelfordMean` and `KahanMean` are moved to `D.M.S.Extra` module.

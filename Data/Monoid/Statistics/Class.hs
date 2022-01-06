@@ -31,10 +31,6 @@ module Data.Monoid.Statistics.Class
   , HasMean(..)
   , CalcVariance(..)
   , HasVariance(..)
-  , calcStddev
-  , calcStddevML
-  , getStddev
-  , getStddevML
   , CalcViaHas(..)
     -- * Exception handling
   , Partial(..)
@@ -244,8 +240,6 @@ class CalcMean a where
   --
   --   \[ \bar{x} = \frac{1}{N}\sum_{i=1}^N{x_i} \]
   calcMean :: MonadThrow m => a -> m Double
-  default calcMean :: (Applicative m, HasMean a) => a -> m Double
-  calcMean = pure . getMean
 
 -- | Same as 'CalcMean' but should never fail
 class CalcMean a => HasMean a where
@@ -262,38 +256,35 @@ class CalcVariance a where
   --
   --   \[ \sigma^2 = \frac{1}{N-1}\sum_{i=1}^N(x_i - \bar{x})^2 \]
   calcVariance :: MonadThrow m => a -> m Double
-  default calcVariance :: (Applicative m, HasVariance a) => a -> m Double
-  calcVariance = pure . getVariance
+  calcVariance = fmap (\x->x*x) . calcStddev
   -- | /Assumed O(1)/ Calculate maximum likelihood estimate of variance:
   --
   --   \[ \sigma^2 = \frac{1}{N}\sum_{i=1}^N(x_i - \bar{x})^2 \]
   calcVarianceML :: MonadThrow m => a -> m Double
-  default calcVarianceML :: (Applicative m, HasVariance a) => a -> m Double
-  calcVarianceML = pure . getVarianceML
+  calcVarianceML = fmap (\x->x*x) . calcStddevML
+  -- | Calculate sample standard deviation from unbiased estimation of
+  --   variance.
+  calcStddev :: MonadThrow m => a -> m Double
+  calcStddev = fmap sqrt . calcVariance
+  -- | Calculate sample standard deviation from maximum likelihood
+  --   estimation of variance.
+  calcStddevML :: (MonadThrow m) => a -> m Double
+  calcStddevML = fmap sqrt . calcVarianceML
+  {-# MINIMAL (calcVariance,calcVarianceML) | (calcStddev,calcStddevML) #-}
 
 -- | Same as 'CalcVariance' but never fails
 class CalcVariance a => HasVariance a where
   getVariance   :: a -> Double
+  getVariance   = (\x -> x*x) . getStddev
   getVarianceML :: a -> Double
+  getVarianceML = (\x -> x*x) . getStddevML
+  getStddev     :: a -> Double
+  getStddev     = sqrt . getVariance
+  getStddevML   :: a -> Double
+  getStddevML   = sqrt . getVarianceML
+  {-# MINIMAL (getVariance,getVarianceML) | (getStddev,getStddevML) #-}
 
 
--- | Calculate sample standard deviation from unbiased estimation of
---   variance.
-calcStddev :: (MonadThrow m, CalcVariance a) => a -> m Double
-calcStddev = fmap sqrt . calcVariance
-
--- | Calculate sample standard deviation from maximum likelihood
---   estimation of variance.
-calcStddevML :: (MonadThrow m, CalcVariance a) => a -> m Double
-calcStddevML = fmap sqrt . calcVarianceML
-
--- | Same as 'calcStddev' but never fails
-getStddev :: HasVariance a => a -> Double
-getStddev = sqrt . getVariance
-
--- | Same as 'calcStddevML' but never fails
-getStddevML :: HasVariance a => a -> Double
-getStddevML = sqrt . getVarianceML
 
 
 newtype CalcViaHas a = CalcViaHas a
