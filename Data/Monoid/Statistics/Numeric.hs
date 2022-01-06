@@ -267,12 +267,7 @@ asVariance :: Variance -> Variance
 asVariance = id
 
 instance Semigroup Variance where
-  (<>) = mappend
-
--- | Iterative algorithm for calculation of variance [Chan1979]
-instance Monoid Variance where
-  mempty = Variance 0 0 0
-  mappend (Variance n1 ta sa) (Variance n2 tb sb)
+  Variance n1 ta sa <> Variance n2 tb sb
     = Variance (n1+n2) (ta+tb) sumsq
     where
       na = fromIntegral n1
@@ -281,6 +276,11 @@ instance Monoid Variance where
       sumsq | n1 == 0   = sb
             | n2 == 0   = sa
             | otherwise = sa + sb + nom / ((na + nb) * na * nb)
+
+-- | Iterative algorithm for calculation of variance [Chan1979]
+instance Monoid Variance where
+  mempty  = Variance 0 0 0
+  mappend = (<>)
 
 instance Real a => StatMonoid Variance a where
   addValue (Variance 0 _ _) x = singletonMonoid x
@@ -364,15 +364,15 @@ instance Eq MinD where
     | otherwise          = a == b
 
 instance Semigroup MinD where
-  (<>) = mappend
-
--- N.B. forall (x :: Double) (x <= NaN) == False
-instance Monoid MinD where
-  mempty = MinD (0/0)
-  mappend (MinD x) (MinD y)
+  MinD x <> MinD y
     | isNaN x   = MinD y
     | isNaN y   = MinD x
     | otherwise = MinD (min x y)
+
+-- N.B. forall (x :: Double) (x <= NaN) == False
+instance Monoid MinD where
+  mempty  = MinD (0/0)
+  mappend = (<>)
 
 instance a ~ Double => StatMonoid MinD a where
   singletonMonoid = MinD
@@ -390,14 +390,14 @@ instance Eq MaxD where
     | otherwise          = a == b
 
 instance Semigroup MaxD where
-  (<>) = mappend
-
-instance Monoid MaxD where
-  mempty = MaxD (0/0)
-  mappend (MaxD x) (MaxD y)
+  MaxD x <> MaxD y
     | isNaN x   = MaxD y
     | isNaN y   = MaxD x
     | otherwise = MaxD (max x y)
+
+instance Monoid MaxD where
+  mempty  = MaxD (0/0)
+  mappend = (<>)
 
 instance a ~ Double => StatMonoid MaxD a where
   singletonMonoid = MaxD
@@ -416,11 +416,11 @@ asBinomAcc :: BinomAcc -> BinomAcc
 asBinomAcc = id
 
 instance Semigroup BinomAcc where
-  (<>) = mappend
+  BinomAcc n1 m1 <> BinomAcc n2 m2 = BinomAcc (n1+n2) (m1+m2)
 
 instance Monoid BinomAcc where
-  mempty = BinomAcc 0 0
-  mappend (BinomAcc n1 m1) (BinomAcc n2 m2) = BinomAcc (n1+n2) (m1+m2)
+  mempty  = BinomAcc 0 0
+  mappend = (<>)
 
 instance StatMonoid BinomAcc Bool where
   addValue (BinomAcc nS nT) True  = BinomAcc (nS+1) (nT+1)

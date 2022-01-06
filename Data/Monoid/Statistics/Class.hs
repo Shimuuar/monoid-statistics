@@ -321,11 +321,12 @@ instance Functor Partial where
 instance Applicative Partial where
   pure = Partial
   Partial f <*> Partial a = Partial (f a)
-
+  (!_) *> a   = a
+  a   <* (!_) = a
 instance Monad Partial where
-  return = Partial
+  return = pure
   Partial a >>= f = f a
-  (!_) >> f = f
+  (>>) = (*>)
 
 instance MonadThrow Partial where
   throwM = throw
@@ -376,8 +377,8 @@ instance (Semigroup a, Semigroup b) => Semigroup (PPair a b) where
   {-# INLINABLE (<>) #-}
 
 instance (Monoid a, Monoid b) => Monoid (PPair a b) where
-  mempty = PPair mempty mempty
-  PPair x y `mappend` PPair x' y' = PPair (x `mappend` x') (y `mappend` y')
+  mempty  = PPair mempty mempty
+  mappend = (<>)
   {-# INLINABLE mempty  #-}
   {-# INLINABLE mappend #-}
 
