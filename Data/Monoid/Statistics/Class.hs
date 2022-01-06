@@ -80,7 +80,7 @@ import GHC.Generics (Generic)
 class Monoid m => StatMonoid m a where
   -- | Add one element to monoid accumulator. It's step of fold.
   addValue :: m -> a -> m
-  addValue m a = m `mappend` singletonMonoid a
+  addValue m a = m <> singletonMonoid a
   {-# INLINE addValue #-}
   -- | State of accumulator corresponding to 1-element sample.
   singletonMonoid :: a -> m
@@ -294,8 +294,8 @@ instance (Semigroup a, Semigroup b) => Semigroup (Pair a b) where
   {-# INLINABLE (<>) #-}
 
 instance (Monoid a, Monoid b) => Monoid (Pair a b) where
-  mempty = Pair mempty mempty
-  Pair x y `mappend` Pair x' y' = Pair (x `mappend` x') (y `mappend` y')
+  mempty  = Pair mempty mempty
+  mappend = (<>)
   {-# INLINABLE mempty  #-}
   {-# INLINABLE mappend #-}
 
