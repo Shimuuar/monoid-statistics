@@ -1,15 +1,17 @@
-{-# LANGUAGE BangPatterns          #-}
-{-# LANGUAGE DefaultSignatures     #-}
-{-# LANGUAGE DeriveDataTypeable    #-}
-{-# LANGUAGE DeriveFoldable        #-}
-{-# LANGUAGE DeriveFunctor         #-}
-{-# LANGUAGE DeriveGeneric         #-}
-{-# LANGUAGE DeriveTraversable     #-}
-{-# LANGUAGE FlexibleInstances     #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE RankNTypes            #-}
-{-# LANGUAGE TemplateHaskell       #-}
-{-# LANGUAGE TypeFamilies          #-}
+{-# LANGUAGE BangPatterns               #-}
+{-# LANGUAGE DefaultSignatures          #-}
+{-# LANGUAGE DeriveDataTypeable         #-}
+{-# LANGUAGE DeriveFoldable             #-}
+{-# LANGUAGE DeriveFunctor              #-}
+{-# LANGUAGE DeriveGeneric              #-}
+{-# LANGUAGE DeriveTraversable          #-}
+{-# LANGUAGE DerivingStrategies         #-}
+{-# LANGUAGE FlexibleInstances          #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE MultiParamTypeClasses      #-}
+{-# LANGUAGE RankNTypes                 #-}
+{-# LANGUAGE TemplateHaskell            #-}
+{-# LANGUAGE TypeFamilies               #-}
 -- |
 -- Module     : Data.Monoid.Statistics
 -- Copyright  : Copyright (c) 2010,2017, Alexey Khudyakov <alexey.skladnoy@gmail.com>
@@ -17,21 +19,19 @@
 -- Maintainer : Alexey Khudyakov <alexey.skladnoy@gmail.com>
 -- Stability  : experimental
 --
-module Statistics.Monoid.Class
-  ( -- * Type class and helpers
+module Data.Monoid.Statistics.Class
+  ( -- * Monoid Type class and helpers
     StatMonoid(..)
   , reduceSample
   , reduceSampleVec
-    -- * Ad-hoc type classes for central moments
+    -- * Ad-hoc type classes for select statistics
+    -- $adhoc
   , CalcCount(..)
   , CalcMean(..)
   , HasMean(..)
   , CalcVariance(..)
   , HasVariance(..)
-  , calcStddev
-  , calcStddevML
-  , getStddev
-  , getStddevML
+  , CalcViaHas(..)
     -- * Exception handling
   , Partial(..)
   , partial
@@ -49,14 +49,14 @@ import           Data.Vector.Unboxed.Deriving (derivingUnbox)
 import qualified Data.Foldable       as F
 import qualified Data.Vector.Generic as G
 import           Numeric.Sum
+import GHC.Stack    (HasCallStack)
 import GHC.Generics (Generic)
 
 
 -- | This type class is used to express parallelizable constant space
---   algorithms for calculation of statistics. By definitions
---   /statistic/ is some measure of sample which doesn't depend on
---   order of elements (for example: mean, sum, number of elements,
---   variance, etc).
+--   algorithms for calculation of statistics. /Statistic/ is function
+--   of type @[a]→b@ which does not depend on order of elements. (for
+--   example: mean, sum, number of elements, variance, etc).
 --
 --   For many statistics it's possible to possible to construct
 --   constant space algorithm which is expressed as fold. Additionally
@@ -64,7 +64,7 @@ import GHC.Generics (Generic)
 --   fold accumulator to get statistic for union of two samples.
 --
 --   Thus for such algorithm we have value which corresponds to empty
---   sample, merge function which which corresponds to merging of two
+--   sample, function which which corresponds to merging of two
 --   samples, and single step of fold. Last one allows to evaluate
 --   statistic given data sample and first two form a monoid and allow
 --   parallelization: split data into parts, build estimate for each
@@ -79,7 +79,7 @@ import GHC.Generics (Generic)
 class Monoid m => StatMonoid m a where
   -- | Add one element to monoid accumulator. It's step of fold.
   addValue :: m -> a -> m
-  addValue m a = m `mappend` singletonMonoid a
+  addValue m a = m <> singletonMonoid a
   {-# INLINE addValue #-}
   -- | State of accumulator corresponding to 1-element sample.
   singletonMonoid :: a -> m
@@ -88,13 +88,21 @@ class Monoid m => StatMonoid m a where
   {-# MINIMAL addValue | singletonMonoid #-}
 
 -- | Calculate statistic over 'Foldable'. It's implemented in terms of
---   foldl'.
-reduceSample :: (F.Foldable f, StatMonoid m a) => f a -> m
+--   foldl'. Note that in cases when accumulator is immediately
+--   consumed by polymorphic function such as 'callMeam' its type
+--   becomes ambiguous. @TypeApplication@ then could be used to
+--   disambiguate.
+--
+-- >>> reduceSample @Mean [1,2,3,4]
+-- MeanKBN 4 (KBNSum 10.0 0.0)
+-- >>> calcMean $ reduceSample @Mean [1,2,3,4] :: Maybe Double
+-- Just 2.5
+reduceSample :: forall m a f. (StatMonoid m a, F.Foldable f) => f a -> m
 reduceSample = F.foldl' addValue mempty
 
--- | Calculate statistic over vector. It's implemented in terms of
---   foldl'.
-reduceSampleVec :: (G.Vector v a, StatMonoid m a) => v a -> m
+-- | Calculate statistic over vector. Works in same was as
+-- 'reduceSample' but works for vectors.
+reduceSampleVec :: forall m a v. (StatMonoid m a, G.Vector v a) => v a -> m
 reduceSampleVec = G.foldl' addValue mempty
 {-# INLINE reduceSampleVec #-}
 
@@ -163,6 +171,61 @@ instance Real a => StatMonoid KB2Sum a where
 -- Ad-hoc type class
 ----------------------------------------------------------------
 
+-- $adhoc
+--
+-- Type classes defined here allows to extract common statistics from
+-- estimators. it's assumed that quantities in question are already
+-- computed so extraction is cheap.
+--
+--
+-- ==== Error handling
+--
+-- Computation of statistics may fail. For example mean is not defined
+-- for an empty sample. @Maybe@ could be seen as easy way to handle
+-- this situation. But in many cases most convenient way to handle
+-- failure is to throw an exception. So failure is encoded by using
+-- polymorphic function of type @MonadThrow m ⇒ a → m X@.
+--
+-- Maybe types has instance, such as 'Maybe', 'Either'
+-- 'Control.Exception.SomeException', 'IO' and most transformers
+-- wrapping it. Notably this library defines 'Partial' monad which
+-- allows to convert failures to exception in pure setting.
+--
+-- >>> calcMean $ reduceSample @Mean []
+-- *** Exception: EmptySample "Data.Monoid.Statistics.Numeric.MeanKBN: calcMean"
+--
+-- >>> calcMean $ reduceSample @Mean [] :: Maybe Double
+-- Nothing
+--
+-- >>> import Control.Exception
+-- >>> calcMean $ reduceSample @Mean [] :: Either SomeException Double
+-- Left (EmptySample "Data.Monoid.Statistics.Numeric.MeanKBN: calcMean")
+--
+-- Last example uses IO
+--
+-- >>> calcMean $ reduceSample @Mean []
+-- *** Exception: EmptySample "Data.Monoid.Statistics.Numeric.MeanKBN: calcMean"
+--
+--
+-- ==== Deriving instances
+--
+-- Type classes come in two variants, one that allow failure and one
+-- for use in cases when quantity is always defined. This is not the
+-- case for estimators, but true for distributions and intended for
+-- such use cases. In that case 'CalcViaHas' could be used to derive
+-- necessary instances.
+--
+-- >>> :{
+-- data NormalDist = NormalDist !Double !Double
+--   deriving (CalcMean,CalcVariance) via CalcViaHas NormalDist
+-- instance HasMean NormalDist where
+--   getMean (NormalDist mu _) = mu
+-- instance HasVariance NormalDist where
+--   getVariance   (NormalDist _ s) = s
+--   getVarianceML (NormalDist _ s) = s
+-- :}
+
+
 -- | Value from which we can efficiently extract number of elements in
 --   sample it represents.
 class CalcCount a where
@@ -174,13 +237,13 @@ class CalcCount a where
 class CalcMean a where
   -- | /Assumed O(1)/ Returns @Nothing@ if there isn't enough data to
   --   make estimate or distribution doesn't have defined mean.
+  --
+  --   \[ \bar{x} = \frac{1}{N}\sum_{i=1}^N{x_i} \]
   calcMean :: MonadThrow m => a -> m Double
-  default calcMean :: (MonadThrow m, HasMean a) => a -> m Double
-  calcMean = return . getMean
 
 -- | Same as 'CalcMean' but should never fail
-class CalcMean m => HasMean m where
-  getMean :: m -> Double
+class CalcMean a => HasMean a where
+  getMean :: a -> Double
 
 
 -- | Values from which we can efficiently compute estimate of sample
@@ -190,34 +253,49 @@ class CalcMean m => HasMean m where
 --   same value.
 class CalcVariance a where
   -- | /Assumed O(1)/ Calculate unbiased estimate of variance:
-  calcVariance   :: MonadThrow m => a -> m Double
+  --
+  --   \[ \sigma^2 = \frac{1}{N-1}\sum_{i=1}^N(x_i - \bar{x})^2 \]
+  calcVariance :: MonadThrow m => a -> m Double
+  calcVariance = fmap (\x->x*x) . calcStddev
   -- | /Assumed O(1)/ Calculate maximum likelihood estimate of variance:
+  --
+  --   \[ \sigma^2 = \frac{1}{N}\sum_{i=1}^N(x_i - \bar{x})^2 \]
   calcVarianceML :: MonadThrow m => a -> m Double
+  calcVarianceML = fmap (\x->x*x) . calcStddevML
+  -- | Calculate sample standard deviation from unbiased estimation of
+  --   variance.
+  calcStddev :: MonadThrow m => a -> m Double
+  calcStddev = fmap sqrt . calcVariance
+  -- | Calculate sample standard deviation from maximum likelihood
+  --   estimation of variance.
+  calcStddevML :: (MonadThrow m) => a -> m Double
+  calcStddevML = fmap sqrt . calcVarianceML
+  {-# MINIMAL (calcVariance,calcVarianceML) | (calcStddev,calcStddevML) #-}
 
 -- | Same as 'CalcVariance' but never fails
 class CalcVariance a => HasVariance a where
   getVariance   :: a -> Double
+  getVariance   = (\x -> x*x) . getStddev
   getVarianceML :: a -> Double
+  getVarianceML = (\x -> x*x) . getStddevML
+  getStddev     :: a -> Double
+  getStddev     = sqrt . getVariance
+  getStddevML   :: a -> Double
+  getStddevML   = sqrt . getVarianceML
+  {-# MINIMAL (getVariance,getVarianceML) | (getStddev,getStddevML) #-}
 
 
--- | Calculate sample standard deviation from unbiased estimation of
---   variance.
-calcStddev :: (MonadThrow m, CalcVariance a) => a -> m Double
-calcStddev = fmap sqrt . calcVariance
 
--- | Calculate sample standard deviation from maximum likelihood
---   estimation of variance.
-calcStddevML :: (MonadThrow m, CalcVariance a) => a -> m Double
-calcStddevML = fmap sqrt . calcVarianceML
 
--- | Same as 'calcStddev' but never fails
-getStddev :: HasVariance a => a -> Double
-getStddev = sqrt . getVariance
+newtype CalcViaHas a = CalcViaHas a
+  deriving newtype (HasMean, HasVariance)
 
--- | Same as 'calcStddevML' but never fails
-getStddevML :: HasVariance a => a -> Double
-getStddevML = sqrt . getVarianceML
+instance HasMean a => CalcMean (CalcViaHas a) where
+  calcMean = pure . getMean
 
+instance HasVariance a => CalcVariance (CalcViaHas a) where
+  calcVariance   = pure . getVariance
+  calcVarianceML = pure . getVarianceML
 
 ----------------------------------------------------------------
 -- Exceptions
@@ -229,12 +307,12 @@ getStddevML = sqrt . getVarianceML
 newtype Partial a = Partial a
   deriving (Show, Read, Eq, Ord, Typeable, Data, Generic)
 
--- | Call function in partial manner. For example
+-- | Convert error to IO exception. This way one could for example
+--   convert case when some statistics is not defined to an exception:
 --
--- > partial . mean
---
---   will throw an exception when called with empty vector as input
-partial :: Partial a -> a
+-- >>> calcMean $ reduceSample @Mean []
+-- *** Exception: EmptySample "Data.Monoid.Statistics.Numeric.MeanKBN: calcMean"
+partial :: HasCallStack => Partial a -> a
 partial (Partial x) = x
 
 instance Functor Partial where
@@ -243,11 +321,12 @@ instance Functor Partial where
 instance Applicative Partial where
   pure = Partial
   Partial f <*> Partial a = Partial (f a)
-
+  (!_) *> a   = a
+  a   <* (!_) = a
 instance Monad Partial where
-  return = Partial
+  return = pure
   Partial a >>= f = f a
-  (!_) >> f = f
+  (>>) = (*>)
 
 instance MonadThrow Partial where
   throwM = throw
@@ -255,7 +334,8 @@ instance MonadThrow Partial where
 -- | Exception which is thrown when we can't compute some value
 data SampleError
   = EmptySample String
-  -- ^ @EmptySample function@: We're trying to compute quantity that 
+  -- ^ @EmptySample function@: We're trying to compute quantity that
+  --   is undefined for empty sample.
   | InvalidSample String String
   -- ^ @InvalidSample function descripton@ quantity in question could
   --   not be computed for some other reason
@@ -277,8 +357,8 @@ instance (Semigroup a, Semigroup b) => Semigroup (Pair a b) where
   {-# INLINABLE (<>) #-}
 
 instance (Monoid a, Monoid b) => Monoid (Pair a b) where
-  mempty = Pair mempty mempty
-  Pair x y `mappend` Pair x' y' = Pair (x `mappend` x') (y `mappend` y')
+  mempty  = Pair mempty mempty
+  mappend = (<>)
   {-# INLINABLE mempty  #-}
   {-# INLINABLE mappend #-}
 
@@ -297,8 +377,8 @@ instance (Semigroup a, Semigroup b) => Semigroup (PPair a b) where
   {-# INLINABLE (<>) #-}
 
 instance (Monoid a, Monoid b) => Monoid (PPair a b) where
-  mempty = PPair mempty mempty
-  PPair x y `mappend` PPair x' y' = PPair (x `mappend` x') (y `mappend` y')
+  mempty  = PPair mempty mempty
+  mappend = (<>)
   {-# INLINABLE mempty  #-}
   {-# INLINABLE mappend #-}
 
@@ -316,3 +396,8 @@ derivingUnbox "Pair"
   [t| forall a b. (Unbox a, Unbox b) => Pair a b -> (a,b) |]
   [| \(Pair a b) -> (a,b) |]
   [| \(a,b) -> Pair a b   |]
+
+-- $setup
+--
+-- >>> :set -XDerivingVia
+-- >>> import Data.Monoid.Statistics.Numeric

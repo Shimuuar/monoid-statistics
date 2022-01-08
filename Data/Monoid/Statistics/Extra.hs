@@ -10,7 +10,7 @@
 -- Monoids for calculating various statistics in constant space. This
 -- module contains algorithms that should be generally avoided unless
 -- there's specific reason to use them.
-module Statistics.Monoid.Extra (
+module Data.Monoid.Statistics.Extra (
     -- * Mean
     WelfordMean(..)
   , asWelfordMean
@@ -27,7 +27,7 @@ import Data.Vector.Unboxed.Deriving (derivingUnbox)
 import Numeric.Sum
 import GHC.Generics                 (Generic)
 
-import Statistics.Monoid.Class
+import Data.Monoid.Statistics.Class
 
 
 
@@ -38,7 +38,7 @@ import Statistics.Monoid.Class
 
 -- | Incremental calculation of mean which uses second-order
 --   compensated Kahan-Babuška summation. In most cases
---   'Statistics.Monoid.Numeric.KBNSum' should provide enough
+--   'Data.Monoid.Statistics.Numeric.KBNSum' should provide enough
 --   precision.
 data MeanKB2 = MeanKB2 !Int {-# UNPACK #-} !KB2Sum
              deriving (Show,Eq)
@@ -59,14 +59,14 @@ instance Real a => StatMonoid MeanKB2 a where
   addValue (MeanKB2 n m) x = MeanKB2 (n+1) (addValue m x)
 
 instance CalcMean MeanKB2 where
-  calcMean (MeanKB2 0 _) = throwM $ EmptySample "Statistics.Monoid.Extra.MeanKB2"
+  calcMean (MeanKB2 0 _) = throwM $ EmptySample "Data.Monoid.Statistics.Extra.MeanKB2"
   calcMean (MeanKB2 n s) = return $! kb2 s / fromIntegral n
 
 
 
 -- | Incremental calculation of mean. Sum of elements is calculated
 --   using compensated Kahan summation. It's provided only for sake of
---   completeness. 'Statistics.Monoid.Numeric.KBNSum' should be used
+--   completeness. 'Data.Monoid.Statistics.Numeric.KBNSum' should be used
 --   instead.
 data MeanKahan = MeanKahan !Int !KahanSum
              deriving (Show,Eq,Typeable,Data,Generic)
@@ -91,7 +91,7 @@ instance Real a => StatMonoid MeanKahan a where
 instance CalcCount MeanKahan where
   calcCount (MeanKahan n _) = n
 instance CalcMean MeanKahan where
-  calcMean (MeanKahan 0 _) = throwM $ EmptySample "Statistics.Monoid.Extra.WelfordMean"
+  calcMean (MeanKahan 0 _) = throwM $ EmptySample "Data.Monoid.Statistics.Extra.WelfordMean"
   calcMean (MeanKahan n s) = return (kahan s / fromIntegral n)
 
 
@@ -99,12 +99,12 @@ instance CalcMean MeanKahan where
 --   offer better numeric precision than plain summation. Its only
 --   advantage is protection against double overflow:
 --
---   > λ> calcMean $ asMeanKBN     $ reduceSample (replicate 100 1e308)
---   > Just NaN
---   > λ> calcMean $ asWelfordMean $ reduceSample (replicate 100 1e308)
---   > Just 1.0e308
+-- >>> calcMean $ reduceSample @MeanKBN (replicate 100 1e308) :: Maybe Double
+-- Just NaN
+-- >>> calcMean $ reduceSample @WelfordMean (replicate 100 1e308) :: Maybe Double
+-- Just 1.0e308
 --
---   Unless this feature is needed 'Statistics.Monoid.Numeric.KBNSum'
+--   Unless this feature is needed 'Data.Monoid.Statistics.Numeric.KBNSum'
 --   should be used. Algorithm is due to Welford [Welford1962]
 data WelfordMean = WelfordMean !Int    -- Number of entries
                                !Double -- Current mean
@@ -141,7 +141,7 @@ instance Real a => StatMonoid WelfordMean a where
 instance CalcCount WelfordMean where
   calcCount (WelfordMean n _) = n
 instance CalcMean WelfordMean where
-  calcMean (WelfordMean 0 _) = throwM $ EmptySample "Statistics.Monoid.Extra.WelfordMean"
+  calcMean (WelfordMean 0 _) = throwM $ EmptySample "Data.Monoid.Statistics.Extra.WelfordMean"
   calcMean (WelfordMean _ m) = return m
 
 
@@ -168,3 +168,7 @@ derivingUnbox "WelfordMean"
 --   products. /Technometrics/
 --   4(3):419-420. <http://www.jstor.org/stable/1266577>
 
+-- $setup
+--
+-- >>> :set -XTypeApplications
+-- >>> import Data.Monoid.Statistics.Numeric

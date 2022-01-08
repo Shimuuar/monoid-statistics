@@ -5,10 +5,11 @@
 -- Maintainer : Alexey Khudyakov <alexey.skladnoy@gmail.com>
 -- Stability  : experimental
 -- 
-module Statistics.Monoid (
-    module Statistics.Monoid.Class
-  , module Statistics.Monoid.Numeric
+module Data.Monoid.Statistics (
+    module Data.Monoid.Statistics.Class
+  , module Data.Monoid.Statistics.Numeric
   ) where
 
-import Statistics.Monoid.Class
-import Statistics.Monoid.Numeric
+import Data.Monoid.Statistics.Class
+import Data.Monoid.Statistics.Numeric
+

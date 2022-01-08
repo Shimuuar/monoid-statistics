@@ -2,16 +2,14 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 --
 {-# OPTIONS_GHC -fno-warn-orphans #-}
-import Control.Applicative
-import Data.Monoid
 import Data.Typeable
 import Numeric.Sum
 import Test.Tasty
 import Test.Tasty.QuickCheck
 import Test.Tasty.HUnit
 
-import Statistics.Monoid
-import Statistics.Monoid.Extra
+import Data.Monoid.Statistics
+import Data.Monoid.Statistics.Extra
 
 data T a = T
 
