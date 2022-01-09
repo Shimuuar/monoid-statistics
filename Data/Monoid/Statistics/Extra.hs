@@ -106,6 +106,8 @@ instance CalcMean MeanKahan where
 --
 --   Unless this feature is needed 'Data.Monoid.Statistics.Numeric.KBNSum'
 --   should be used. Algorithm is due to Welford [Welford1962]
+--
+-- \[ s_n = s_{n-1} + \frac{x_n - s_{n-1}}{n} \]
 data WelfordMean = WelfordMean !Int    -- Number of entries
                                !Double -- Current mean
   deriving (Show,Eq,Typeable,Data,Generic)
@@ -130,7 +132,6 @@ instance Monoid WelfordMean where
   {-# INLINE mempty  #-}
   {-# INLINE mappend #-}
 
--- | \[ s_n = s_{n-1} + \frac{x_n - s_{n-1}}{n} \]
 instance Real a => StatMonoid WelfordMean a where
   addValue (WelfordMean n m) !x
     = WelfordMean n' (m + (realToFrac x - m) / fromIntegral n')

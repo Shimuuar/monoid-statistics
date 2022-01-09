@@ -256,7 +256,7 @@ asVarWelfordKBN :: VarWelfordKBN -> VarWelfordKBN
 asVarWelfordKBN = id
 
 
--- | Incremental algorithms for calculation the standard deviation.
+-- | Incremental algorithms for calculation the standard deviation [Chan1979].
 data Variance = Variance {-# UNPACK #-} !Int    --  Number of elements in the sample
                          {-# UNPACK #-} !Double -- Current sum of elements of sample
                          {-# UNPACK #-} !Double -- Current sum of squares of deviations from current mean
@@ -277,7 +277,6 @@ instance Semigroup Variance where
             | n2 == 0   = sa
             | otherwise = sa + sb + nom / ((na + nb) * na * nb)
 
--- | Iterative algorithm for calculation of variance [Chan1979]
 instance Monoid Variance where
   mempty  = Variance 0 0 0
   mappend = (<>)
