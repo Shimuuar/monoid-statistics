@@ -30,10 +30,10 @@ module Data.Monoid.Statistics.Numeric (
   , MeanKBN(..)
   , asMeanKBN
     -- *** Weighted mean
-  , WMeanKBN(..)
-  , asWMeanKBN
   , WMeanNaive(..)
   , asWMeanNaive
+  , WMeanKBN(..)
+  , asWMeanKBN
     -- ** Variance
   , Variance(..)
   , asVariance
