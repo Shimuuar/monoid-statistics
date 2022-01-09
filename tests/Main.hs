@@ -1,33 +1,72 @@
+{-# LANGUAGE AllowAmbiguousTypes #-}
 {-# LANGUAGE FlexibleContexts    #-}
+{-# LANGUAGE FlexibleInstances   #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeApplications    #-}
 --
 {-# OPTIONS_GHC -fno-warn-orphans #-}
+module Main (main) where
 import Data.Typeable
 import Numeric.Sum
 import Test.Tasty
 import Test.Tasty.QuickCheck
 import Test.Tasty.HUnit
+import Test.Tasty.ExpectedFailure (ignoreTest)
 
 import Data.Monoid.Statistics
 import Data.Monoid.Statistics.Extra
 
-data T a = T
+
+----------------------------------------------------------------
+-- Properties
+----------------------------------------------------------------
+
+class MonoidProperty m where
+  isAssociative, isCommutative, isMemptyDistribute, isMemptyNeutral :: Bool
+  isMemptyNeutral    = True
+  isMemptyDistribute = True
+  isAssociative      = True
+  isCommutative      = True
+
+instance {-# OVERLAPPABLE #-} MonoidProperty m
+instance MonoidProperty MeanNaive where
+  isAssociative = False
+instance MonoidProperty WelfordMean where
+  isAssociative      = False
+  isMemptyDistribute = False
+instance MonoidProperty MeanKahan where
+  isAssociative      = False
+  isCommutative      = False
+  isMemptyDistribute = False
+instance MonoidProperty MeanKBN where
+  isAssociative = False
+  isCommutative = False
+instance MonoidProperty Variance where
+  isAssociative = False
+instance MonoidProperty WMeanNaive where
+  isAssociative   = False
+instance MonoidProperty WMeanKBN where
+  isMemptyNeutral = False
+  isAssociative   = False
+  isCommutative   = False
 
 p_memptyIsNeutral
-  :: forall m. (Monoid m, Arbitrary m, Show m, Eq m)
-  => T m -> TestTree
-p_memptyIsNeutral _
-  = testProperty "mempty is neutral" $ \(m :: m) ->
+  :: forall m. (Monoid m, MonoidProperty m, Arbitrary m, Show m, Eq m)
+  => TestTree
+p_memptyIsNeutral
+  = (if isMemptyNeutral @m then id else ignoreTest)
+  $ testProperty "mempty is neutral" $ \(m :: m) ->
     counterexample ("m <> mempty = " ++ show (m <> mempty))
   $ counterexample ("mempty <> m = " ++ show (mempty <> m))
   $  (m <> mempty) == m
   && (mempty <> m) == m
 
 p_associativity
-  :: forall m. (Monoid m, Arbitrary m, Show m, Eq m)
-  => T m -> TestTree
-p_associativity _
-  = testProperty "associativity" $ \(a :: m) b c ->
+  :: forall m. (MonoidProperty m, Monoid m, Arbitrary m, Show m, Eq m)
+  => TestTree
+p_associativity
+  = (if isAssociative @m then id else ignoreTest)
+  $ testProperty "associativity" $ \(a :: m) b c ->
     let val1 = (a <> b) <> c
         val2 = a <> (b <> c)
     in counterexample ("left : " ++ show val1)
@@ -35,29 +74,35 @@ p_associativity _
      $ val1 == val2
 
 p_commutativity
-  :: forall m. (Monoid m, Arbitrary m, Show m, Eq m)
-  => T m -> TestTree
-p_commutativity _
-  = testProperty "commutativity" $ \(a :: m) b ->
-    (a <> b) == (b <> a)
+  :: forall m. (Monoid m, MonoidProperty m, Arbitrary m, Show m, Eq m)
+  => TestTree
+p_commutativity
+  = (if isCommutative @m then id else ignoreTest)
+  $ testProperty "commutativity" $ \(a :: m) b ->
+    let val1 = a <> b
+        val2 = b <> a
+    in counterexample ("a <> b = " ++ show val1)
+     $ counterexample ("b <> a = " ++ show val2)
+     $ val1 == val2
 
 p_addValue1
-  :: forall a m. ( StatMonoid m a
+  :: forall m a. ( StatMonoid m a
                  , Eq m
                  , Arbitrary a, Show a)
-  => T a -> T m -> TestTree
-p_addValue1 _ _
+  => TestTree
+p_addValue1
   = testProperty "addValue x mempty == singletonMonoid" $ \(a :: a) ->
     singletonMonoid a == addValue (mempty :: m) a
 
 
 p_addValue2
-  :: forall a m. ( StatMonoid m a
+  :: forall m a. ( MonoidProperty m, StatMonoid m a
                  , Show m, Eq m
                  , Arbitrary a, Show a)
-  => T a -> T m -> TestTree
-p_addValue2 _ _
-  = testProperty "addValue law" $ \(x :: a) (y :: a) ->
+  => TestTree
+p_addValue2
+  = (if isMemptyDistribute @m then id else ignoreTest)
+  $ testProperty "addValue (addValue m x) y = addValue 0 x <> addValue 0 y" $ \(x :: a) (y :: a) ->
     let val1 = addValue (addValue mempty y) x
         val2 = (addValue mempty x <> addValue (mempty :: m) y)
     in counterexample ("left : " ++ show val1)
@@ -68,138 +113,111 @@ p_addValue2 _ _
 
 ----------------------------------------------------------------
 
-testType :: forall m. Typeable m => T m -> [T m -> TestTree] -> TestTree
-testType t props = testGroup (show (typeOf (undefined :: m)))
-                             (fmap ($ t) props)
+testMonoid
+  :: forall m a.
+     ( StatMonoid m a, MonoidProperty m
+     , Typeable a, Typeable m, Arbitrary a, Arbitrary m, Show a, Show m, Eq m)
+  => [TestTree] -> TestTree
+testMonoid tests
+  = testGroup (show (typeOf (undefined :: m)) ++ " <= " ++ show (typeOf (undefined :: a)))
+  $ [ p_memptyIsNeutral @m
+    , p_associativity   @m
+    , p_commutativity   @m
+    , p_addValue1       @m @a
+    , p_addValue2       @m @a
+    ]
+ ++ tests
 
-testStatMonoid
-  :: (Typeable m
-     , StatMonoid m a
-     , Arbitrary m, Show m, Eq m
-     , Arbitrary a, Show a)
-  => T m
-  -> T a
-  -> TestTree
-testStatMonoid tm ta = testType tm
-  [ p_memptyIsNeutral
-  , p_associativity
-  , p_commutativity
-  , p_addValue1 ta
-  , p_addValue2 ta
-  ]
+testMeanMonoid
+  :: forall m.
+     ( StatMonoid m Double, CalcMean m, CalcCount m, MonoidProperty m
+     , Typeable m, Arbitrary m, Show m, Eq m)
+  => [TestTree] -> TestTree
+testMeanMonoid tests
+  = testMonoid @m @Double
+  $ [ testCase "Count" $ do
+        let m = reduceSample @m testSample
+        testSampleCount     @=? calcCount m
+    , testCase "Mean" $ do
+        let m = reduceSample @m testSample
+        Just testSampleMean @=? calcMean  m
+    , testCase "Mean (empty sample)" $ do
+        let m = reduceSample @m @Double []
+        Nothing @=? calcMean m
+    ] ++ tests
+
+testVarianceMonoid
+  :: forall m.
+     ( StatMonoid m Double, CalcVariance m, CalcMean m, CalcCount m, MonoidProperty m
+     , Typeable m, Arbitrary m, Show m, Eq m)
+  => [TestTree] -> TestTree
+testVarianceMonoid tests
+  = testMeanMonoid @m
+  $ [ testCase "Variance (unbiased)" $ do
+        let m = reduceSample @m testSample
+        Just testSampleVariance   @=? calcVariance m
+    , testCase "Variance (ML)" $ do
+        let m = reduceSample @m testSample
+        Just testSampleVarianceML @=? calcVarianceML m
+    ] ++ tests
+
+testWMeanMonoid
+  :: forall m.
+     ( StatMonoid m (Weighted Double Double), CalcMean m, MonoidProperty m
+     , Typeable m, Arbitrary m, Show m, Eq m)
+  => [TestTree] -> TestTree
+testWMeanMonoid tests
+  = testMonoid @m @(Weighted Double Double)
+  $ [ testCase "Mean" $ do
+        let m = reduceSample @m testWSample
+        Just testWSampleMean @=? calcMean  m
+    ] ++ tests
+
 
 main :: IO ()
 main = defaultMain $ testGroup "monoid-statistics"
-  [ testGroup "Monoid laws"
-    [ testStatMonoid (T :: T (CountG Int)) (T :: T Int)
-    , testStatMonoid (T :: T (Min Int))    (T :: T Int)
-    , testStatMonoid (T :: T (Max Int))    (T :: T Int)
-    , testStatMonoid (T :: T MinD)         (T :: T Double)
-    , testStatMonoid (T :: T MaxD)         (T :: T Double)
-    , testStatMonoid (T :: T BinomAcc)     (T :: T Bool)
-    -- Monoids that use floating point and thus violate laws
-    , testType (T :: T MeanNaive)
-      [ p_memptyIsNeutral
-        -- , p_associativity
-      , p_commutativity
-      , p_addValue1 (T :: T Double)
-        -- , p_addValue2 (T :: T Double)
-      ]
-    , testType (T :: T WelfordMean)
-      [ p_memptyIsNeutral
-        -- , p_associativity
-      , p_commutativity
-      , p_addValue1 (T :: T Double)
-        -- , p_addValue2 (T :: T Double)
-      ]
-    , testType (T :: T MeanKahan)
-      [ p_memptyIsNeutral
-        -- , p_associativity
-        -- , p_commutativity
-      , p_addValue1 (T :: T Double)
-        -- , p_addValue2 (T :: T Double)
-      ]
-    , testType (T :: T MeanKBN)
-      [ p_memptyIsNeutral
-        -- , p_associativity
-        -- , p_commutativity
-      , p_addValue1 (T :: T Double)
-      , p_addValue2 (T :: T Double)
-      ]
-    , testType (T :: T WMeanKBN)
-      [ -- p_memptyIsNeutral -- FIXME: bug in <> of KBNSum
-        -- , p_associativity
-        -- , p_commutativity
-        p_addValue1 (T :: T (Weighted Double Double))
-      , p_addValue2 (T :: T (Weighted Double Double))
-      ]
-    , testType (T :: T WMeanNaive)
-      [ p_memptyIsNeutral
-        -- , p_associativity
-      , p_commutativity
-      , p_addValue1 (T :: T (Weighted Double Double))
-      , p_addValue2 (T :: T (Weighted Double Double))
-      ]
-    , testType (T :: T Variance)
-      [ p_memptyIsNeutral
-        -- , p_associativity
-      , p_commutativity
-      , p_addValue1 (T :: T Double)
-      , p_addValue2 (T :: T Double)
-      ]
-    ]
-  , testGroup "Monoids do right thing"
+  [ testMonoid @(CountG Int) @Int
     [ testCase "CountG"  $ let xs = "acbdef"
                                n  = reduceSample xs :: Count
                            in length xs @=? calcCount n
-    , testCase "Min []"  $ let xs = []
+    ]
+  , testMonoid @(Min Int)    @Int
+    [ testCase "Min []"  $ let xs = []
                                n  = reduceSample xs :: Min Int
                            in Nothing @=? calcMin n
     , testCase "Min"     $ let xs = [1..10]
                                n  = reduceSample xs :: Min Int
                            in Just (minimum xs) @=? calcMin n
-    , testCase "Max []"  $ let xs = []
+    ]
+  , testMonoid @(Max Int)    @Int
+    [ testCase "Max []"  $ let xs = []
                                n  = reduceSample xs :: Max Int
                            in Nothing @=? calcMax n
     , testCase "Max"     $ let xs = [1..10]
                                n  = reduceSample xs :: Max Int
                            in Just (maximum xs) @=? calcMax n
-    -- , testCase "MinD []" $ let xs = []
-    --                            n  = reduceSample xs :: MinD
-    --                        in Nothing @=? calcMinD n
-    , testCase "MinD"    $ let xs = [1..10]
+    ]
+  , testMonoid @MinD         @Double
+    [ testCase "MinD"    $ let xs = [1..10]
                                n  = reduceSample xs :: MinD
                            in minimum xs @=? calcMinD n
-    -- , testCase "MaxD []" $ let xs = []
-    --                            n  = reduceSample xs :: MaxD
-    --                        in Nothing @=? calcMaxD n
-    , testCase "MaxD"    $ let xs = [1..10]
+    ]
+  , testMonoid @MaxD         @Double
+    [ testCase "MaxD"    $ let xs = [1..10]
                                n  = reduceSample xs :: MaxD
                            in maximum xs @=? calcMaxD n
-    --
-    , testMeanMonoid (T :: T MeanKBN)
-    , testMeanMonoid (T :: T MeanKahan)
-    , testMeanMonoid (T :: T WelfordMean)
-    , testMeanMonoid (T :: T MeanNaive)
-    , testWMeanMonoid (T :: T WMeanKBN)
+
     ]
+  , testMonoid @BinomAcc     @Bool   []
+    -- Numeric accumulators
+  , testMeanMonoid     @MeanNaive   []
+  , testMeanMonoid     @WelfordMean []
+  , testMeanMonoid     @MeanKahan   []
+  , testMeanMonoid     @MeanKBN     []
+  , testWMeanMonoid    @WMeanNaive  []
+  , testWMeanMonoid    @WMeanKBN    []
+  , testVarianceMonoid @Variance    []
   ]
-
-
-testMeanMonoid
-  :: forall m. (Typeable m, CalcMean m, CalcCount m, StatMonoid m Double)
-  => T m -> TestTree
-testMeanMonoid _ = testCase ("Mean of " ++ show (typeOf (undefined :: m))) $ do
-  let m = reduceSample testSample :: m
-  testSampleCount     @=? calcCount m
-  Just testSampleMean @=? calcMean  m
-
-testWMeanMonoid
-  :: forall m. (Typeable m, CalcMean m, StatMonoid m (Weighted Double Double))
-  => T m -> TestTree
-testWMeanMonoid _ = testCase ("Mean of " ++ show (typeOf (undefined :: m))) $ do
-  let m = reduceSample testWSample :: m
-  Just testWSampleMean @=? calcMean  m
 
 -- | Test sample for which we could compute statistics exactly, and
 --   any reasonable algorithm should be able to return exact answer as
@@ -217,9 +235,9 @@ testSampleMean,testWSampleMean :: Double
 testSampleMean  = 5.5
 testWSampleMean = 7.0
 
-testSampleVariance :: Double
-testSampleVariance = 8.25
-
+testSampleVariance,testSampleVarianceML :: Double
+testSampleVariance   = 9.166666666666666
+testSampleVarianceML = 8.25
 
 ----------------------------------------------------------------
 
