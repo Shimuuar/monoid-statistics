@@ -475,6 +475,12 @@ derivingUnbox "Weighted"
   [| \(Weighted w a) -> (w,a) |]
   [| \(w,a) -> Weighted w a   |]
 
+derivingUnbox "BinomAcc"
+  [t| BinomAcc -> (Int,Int)   |]
+  [| \(BinomAcc k n) -> (k,n) |]
+  [| \(k,n) -> BinomAcc k n   |]
+
+
 -- $references
 --
 -- * [Welford1962] Welford, B.P. (1962) Note on a method for

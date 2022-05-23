@@ -1,3 +1,8 @@
+# Changes in 1.1.1.0
+
+- `Unbox` instance for `BinomAcc` is added.
+
+
 # Changes in 1.1.0.0
 
 - Type classes `CalcMean` and `CalcVar` are generalized to use `MonadThrow` to
