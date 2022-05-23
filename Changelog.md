@@ -1,9 +1,9 @@
-# Changes in 1.1.1.0
+# Changes in 1.1.1
 
 - `Unbox` instance for `BinomAcc` is added.
 
 
-# Changes in 1.1.0.0
+# Changes in 1.1.0
 
 - Type classes `CalcMean` and `CalcVar` are generalized to use `MonadThrow` to
   signal failure instead of using `Maybe` only
