@@ -1,3 +1,7 @@
+# Changes in 1.1.2
+
+- `Unbox` instances for `MeanNaive`, `WMeanNaive`, `WMeanKBN`.
+
 # Changes in 1.1.1
 
 - `Unbox` instance for `BinomAcc` is added.

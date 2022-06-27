@@ -450,15 +450,30 @@ derivingUnbox "CountG"
   [| calcCountN |]
   [| CountG     |]
 
+derivingUnbox "MeanNaive"
+  [t| MeanNaive -> (Int,Double) |]
+  [| \(MeanNaive a b) -> (a,b)  |]
+  [| \(a,b) -> MeanNaive a b    |]
+
 derivingUnbox "MeanKBN"
-  [t| MeanKBN -> (Int,Double,Double) |]
-  [| \(MeanKBN a (KBNSum b c)) -> (a,b,c)   |]
-  [| \(a,b,c) -> MeanKBN a (KBNSum b c) |]
+  [t| MeanKBN -> (Int,Double,Double)      |]
+  [| \(MeanKBN a (KBNSum b c)) -> (a,b,c) |]
+  [| \(a,b,c) -> MeanKBN a (KBNSum b c)   |]
+
+derivingUnbox "WMeanNaive"
+  [t| WMeanNaive -> (Double,Double) |]
+  [| \(WMeanNaive a b) -> (a,b)     |]
+  [| \(a,b) -> WMeanNaive a b       |]
+
+derivingUnbox "WMeanKBN"
+  [t| WMeanKBN -> (Double,Double,Double,Double)         |]
+  [| \(WMeanKBN (KBNSum a b) (KBNSum c d)) -> (a,b,c,d) |]
+  [| \(a,b,c,d) -> WMeanKBN (KBNSum a b) (KBNSum c d)   |]
 
 derivingUnbox "Variance"
   [t| Variance -> (Int,Double,Double) |]
-  [| \(Variance a b c) -> (a,b,c)  |]
-  [| \(a,b,c) -> Variance a b c    |]
+  [| \(Variance a b c) -> (a,b,c)     |]
+  [| \(a,b,c) -> Variance a b c       |]
 
 derivingUnbox "MinD"
   [t| MinD -> Double |]
