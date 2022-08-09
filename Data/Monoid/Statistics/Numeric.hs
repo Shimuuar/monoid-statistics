@@ -260,7 +260,7 @@ asVarWelfordKBN = id
 data Variance = Variance {-# UNPACK #-} !Int    --  Number of elements in the sample
                          {-# UNPACK #-} !Double -- Current sum of elements of sample
                          {-# UNPACK #-} !Double -- Current sum of squares of deviations from current mean
-                deriving (Show,Eq,Typeable)
+                deriving (Show,Eq,Typeable, Generic)
 
 -- | Type restricted 'id '
 asVariance :: Variance -> Variance
