@@ -1,11 +1,14 @@
 {-# LANGUAGE AllowAmbiguousTypes #-}
 {-# LANGUAGE FlexibleContexts    #-}
 {-# LANGUAGE FlexibleInstances   #-}
+{-# LANGUAGE ImportQualifiedPost #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeApplications    #-}
 --
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 module Main (main) where
+
+import Codec.Serialise qualified as CBOR
 import Data.Typeable
 import Numeric.Sum
 import Test.Tasty
@@ -176,48 +179,64 @@ testWMeanMonoid tests
 
 main :: IO ()
 main = defaultMain $ testGroup "monoid-statistics"
-  [ testMonoid @(CountG Int) @Int
-    [ testCase "CountG"  $ let xs = "acbdef"
-                               n  = reduceSample xs :: Count
-                           in length xs @=? calcCount n
-    ]
-  , testMonoid @(Min Int)    @Int
-    [ testCase "Min []"  $ let xs = []
-                               n  = reduceSample xs :: Min Int
-                           in Nothing @=? calcMin n
-    , testCase "Min"     $ let xs = [1..10]
-                               n  = reduceSample xs :: Min Int
-                           in Just (minimum xs) @=? calcMin n
-    ]
-  , testMonoid @(Max Int)    @Int
-    [ testCase "Max []"  $ let xs = []
-                               n  = reduceSample xs :: Max Int
-                           in Nothing @=? calcMax n
-    , testCase "Max"     $ let xs = [1..10]
-                               n  = reduceSample xs :: Max Int
-                           in Just (maximum xs) @=? calcMax n
-    ]
-  , testMonoid @MinD         @Double
-    [ testCase "MinD"    $ let xs = [1..10]
-                               n  = reduceSample xs :: MinD
-                           in minimum xs @=? calcMinD n
-    ]
-  , testMonoid @MaxD         @Double
-    [ testCase "MaxD"    $ let xs = [1..10]
-                               n  = reduceSample xs :: MaxD
-                           in maximum xs @=? calcMaxD n
+  [ testGroup "StatMonoid"
+    [ testMonoid @(CountG Int) @Int
+      [ testCase "CountG"  $ let xs = "acbdef"
+                                 n  = reduceSample xs :: Count
+                             in length xs @=? calcCount n
+      ]
+    , testMonoid @(Min Int)    @Int
+      [ testCase "Min []"  $ let xs = []
+                                 n  = reduceSample xs :: Min Int
+                             in Nothing @=? calcMin n
+      , testCase "Min"     $ let xs = [1..10]
+                                 n  = reduceSample xs :: Min Int
+                             in Just (minimum xs) @=? calcMin n
+      ]
+    , testMonoid @(Max Int)    @Int
+      [ testCase "Max []"  $ let xs = []
+                                 n  = reduceSample xs :: Max Int
+                             in Nothing @=? calcMax n
+      , testCase "Max"     $ let xs = [1..10]
+                                 n  = reduceSample xs :: Max Int
+                             in Just (maximum xs) @=? calcMax n
+      ]
+    , testMonoid @MinD         @Double
+      [ testCase "MinD"    $ let xs = [1..10]
+                                 n  = reduceSample xs :: MinD
+                             in minimum xs @=? calcMinD n
+      ]
+    , testMonoid @MaxD         @Double
+      [ testCase "MaxD"    $ let xs = [1..10]
+                                 n  = reduceSample xs :: MaxD
+                             in maximum xs @=? calcMaxD n
 
+      ]
+    , testMonoid @BinomAcc     @Bool   []
+      -- Numeric accumulators
+    , testMeanMonoid     @MeanNaive   []
+    , testMeanMonoid     @WelfordMean []
+    , testMeanMonoid     @MeanKahan   []
+    , testMeanMonoid     @MeanKBN     []
+    , testWMeanMonoid    @WMeanNaive  []
+    , testWMeanMonoid    @WMeanKBN    []
+    , testVarianceMonoid @Variance    []
     ]
-  , testMonoid @BinomAcc     @Bool   []
-    -- Numeric accumulators
-  , testMeanMonoid     @MeanNaive   []
-  , testMeanMonoid     @WelfordMean []
-  , testMeanMonoid     @MeanKahan   []
-  , testMeanMonoid     @MeanKBN     []
-  , testWMeanMonoid    @WMeanNaive  []
-  , testWMeanMonoid    @WMeanKBN    []
-  , testVarianceMonoid @Variance    []
+  , testGroup "Serialization"
+    [ testSerialise @Count
+    , testSerialise @MeanNaive
+    , testSerialise @MeanKBN
+    , testSerialise @WMeanNaive
+    , testSerialise @WMeanKBN
+    , testSerialise @Variance
+    , testSerialise @(Max Int)
+    , testSerialise @(Min Int)
+    , testSerialise @MinD
+    , testSerialise @MaxD
+    , testSerialise @BinomAcc
+    ]
   ]
+
 
 -- | Test sample for which we could compute statistics exactly, and
 --   any reasonable algorithm should be able to return exact answer as
@@ -238,6 +257,14 @@ testWSampleMean = 7.0
 testSampleVariance,testSampleVarianceML :: Double
 testSampleVariance   = 9.166666666666666
 testSampleVarianceML = 8.25
+
+testSerialise
+  :: forall m.
+     ( CBOR.Serialise m, Typeable m, Arbitrary m, Show m, Eq m)
+  => TestTree
+testSerialise
+  = testProperty (show (typeOf (undefined :: m)))
+  $ \(a :: m) -> a == (CBOR.deserialise . CBOR.serialise) a
 
 ----------------------------------------------------------------
 

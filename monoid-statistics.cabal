@@ -43,6 +43,7 @@ Library
                   , vector          >=0.11 && <1
                   , vector-th-unbox >=0.2.1.6
                   , math-functions  >=0.3
+                  , serialise       >=0.2
   --
   Exposed-modules: Data.Monoid.Statistics
                    Data.Monoid.Statistics.Class
@@ -68,6 +69,7 @@ test-suite monoid-statistics-tests
                , tasty-hunit
                , tasty-expected-failure
                , QuickCheck
+               , serialise
 
 test-suite monoid-statistics-doctest
   if impl(ghcjs)

@@ -1,15 +1,20 @@
-{-# LANGUAGE BangPatterns          #-}
-{-# LANGUAGE DeriveDataTypeable    #-}
-{-# LANGUAGE DeriveFoldable        #-}
-{-# LANGUAGE DeriveGeneric         #-}
-{-# LANGUAGE DeriveTraversable     #-}
-{-# LANGUAGE FlexibleContexts      #-}
-{-# LANGUAGE FlexibleInstances     #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE ScopedTypeVariables   #-}
-{-# LANGUAGE TemplateHaskell       #-}
-{-# LANGUAGE TypeFamilies          #-}
-{-# LANGUAGE ViewPatterns          #-}
+{-# LANGUAGE BangPatterns               #-}
+{-# LANGUAGE DeriveAnyClass             #-}
+{-# LANGUAGE DeriveDataTypeable         #-}
+{-# LANGUAGE DeriveFoldable             #-}
+{-# LANGUAGE DeriveGeneric              #-}
+{-# LANGUAGE DeriveTraversable          #-}
+{-# LANGUAGE DerivingStrategies         #-}
+{-# LANGUAGE FlexibleContexts           #-}
+{-# LANGUAGE FlexibleInstances          #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE ImportQualifiedPost        #-}
+{-# LANGUAGE MultiParamTypeClasses      #-}
+{-# LANGUAGE ScopedTypeVariables        #-}
+{-# LANGUAGE StandaloneDeriving         #-}
+{-# LANGUAGE TemplateHaskell            #-}
+{-# LANGUAGE TypeFamilies               #-}
+{-# LANGUAGE ViewPatterns               #-}
 -- |
 -- Monoids for calculating various statistics in constant space
 module Data.Monoid.Statistics.Numeric (
@@ -51,6 +56,10 @@ module Data.Monoid.Statistics.Numeric (
     -- $references
   ) where
 
+import Codec.Serialise              qualified as CBOR
+import Codec.Serialise.Encoding     qualified as CBOR
+import Codec.Serialise.Decoding     qualified as CBOR
+import Control.Monad
 import Control.Monad.Catch          (MonadThrow(..))
 import Data.Data                    (Typeable,Data)
 import Data.Vector.Unboxed          (Unbox)
@@ -494,6 +503,27 @@ derivingUnbox "BinomAcc"
   [t| BinomAcc -> (Int,Int)   |]
   [| \(BinomAcc k n) -> (k,n) |]
   [| \(k,n) -> BinomAcc k n   |]
+
+
+instance CBOR.Serialise KBNSum where
+  encode (KBNSum a b) = CBOR.encodeListLen 2
+                     <> CBOR.encode a
+                     <> CBOR.encode b
+  decode = do n <- CBOR.decodeListLen
+              when (n /= 2) $ fail "KBNSum: expecting list of length 2"
+              KBNSum <$> CBOR.decode <*> CBOR.decode
+
+deriving newtype  instance CBOR.Serialise a => CBOR.Serialise (CountG a)
+deriving anyclass instance CBOR.Serialise MeanNaive
+deriving anyclass instance CBOR.Serialise MeanKBN
+deriving anyclass instance CBOR.Serialise WMeanNaive
+deriving anyclass instance CBOR.Serialise WMeanKBN
+deriving anyclass instance CBOR.Serialise Variance
+deriving newtype  instance CBOR.Serialise a => CBOR.Serialise (Max a)
+deriving newtype  instance CBOR.Serialise a => CBOR.Serialise (Min a)
+deriving newtype  instance CBOR.Serialise MaxD
+deriving newtype  instance CBOR.Serialise MinD
+deriving anyclass instance CBOR.Serialise BinomAcc
 
 
 -- $references
