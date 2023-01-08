@@ -1,15 +1,22 @@
-{-# LANGUAGE BangPatterns          #-}
-{-# LANGUAGE DeriveDataTypeable    #-}
-{-# LANGUAGE DeriveFoldable        #-}
-{-# LANGUAGE DeriveGeneric         #-}
-{-# LANGUAGE DeriveTraversable     #-}
-{-# LANGUAGE FlexibleContexts      #-}
-{-# LANGUAGE FlexibleInstances     #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE ScopedTypeVariables   #-}
-{-# LANGUAGE TemplateHaskell       #-}
-{-# LANGUAGE TypeFamilies          #-}
-{-# LANGUAGE ViewPatterns          #-}
+{-# LANGUAGE BangPatterns               #-}
+{-# LANGUAGE DeriveAnyClass             #-}
+{-# LANGUAGE DeriveDataTypeable         #-}
+{-# LANGUAGE DeriveFoldable             #-}
+{-# LANGUAGE DeriveGeneric              #-}
+{-# LANGUAGE DeriveTraversable          #-}
+{-# LANGUAGE DerivingStrategies         #-}
+{-# LANGUAGE DerivingVia                #-}
+{-# LANGUAGE FlexibleContexts           #-}
+{-# LANGUAGE FlexibleInstances          #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE ImportQualifiedPost        #-}
+{-# LANGUAGE MultiParamTypeClasses      #-}
+{-# LANGUAGE ScopedTypeVariables        #-}
+{-# LANGUAGE StandaloneDeriving         #-}
+{-# LANGUAGE TemplateHaskell            #-}
+{-# LANGUAGE TypeFamilies               #-}
+{-# LANGUAGE TypeOperators              #-}
+{-# LANGUAGE ViewPatterns               #-}
 -- |
 -- Monoids for calculating various statistics in constant space
 module Data.Monoid.Statistics.Numeric (
@@ -54,6 +61,9 @@ module Data.Monoid.Statistics.Numeric (
 import Control.Monad.Catch          (MonadThrow(..))
 import Data.Data                    (Typeable,Data)
 import Data.Vector.Unboxed          (Unbox)
+import Data.Vector.Unboxed          qualified as VU
+import Data.Vector.Generic          qualified as VG
+import Data.Vector.Generic.Mutable  qualified as VGM
 import Data.Vector.Unboxed.Deriving (derivingUnbox)
 import Numeric.Sum
 import GHC.Generics                 (Generic)
@@ -90,7 +100,42 @@ instance (Integral a) => StatMonoid (CountG a) b where
 instance CalcCount (CountG Int) where
   calcCount = calcCountN
 
+instance Real a => CalcNEvt (CountG a) where
+  calcEvtsW    = realToFrac . calcCountN
+  calcEvtsWErr = sqrt . calcEvtsW
+  {-# INLINE calcEvtsW    #-}
+  {-# INLINE calcEvtsWErr #-}
 
+----------------------------------------------------------------
+
+-- | Accumulator type for counting weighted events. Weights are
+--   presumed to be independent and follow same distribution \[W\].
+--   In this case sum of weights follows compound Poisson
+--   distribution. Its expectation could be then estimated as
+--   \[\sum_iw_i\] and variance as \[\sum_iw_i^2\].
+--
+--   Main use of this data type is as accumulator in histograms which
+--   count weighted events.
+data CountW = CountW
+  !Double -- Sum of weights
+  !Double -- Sum of weight squares
+  deriving stock (Show,Eq,Generic)
+
+instance Semigroup CountW where
+  CountW wA w2A <> CountW wB w2B = CountW (wA+wB) (w2A+w2B)
+  {-# INLINE (<>) #-}
+instance Monoid CountW where
+  mempty = CountW 0 0
+
+instance Real a => StatMonoid CountW a where
+  addValue (CountW w w2) a = CountW (w + x) (w2 + x*x)
+    where
+      x = realToFrac a
+
+instance CalcNEvt CountW where
+  calcEvtsW    (CountW w _ ) = w
+  calcEvtsWErr (CountW _ w2) = sqrt w2
+  calcEffNEvt  (CountW w w2) = w * w / w2
 
 ----------------------------------------------------------------
 
@@ -495,6 +540,16 @@ derivingUnbox "BinomAcc"
   [| \(BinomAcc k n) -> (k,n) |]
   [| \(k,n) -> BinomAcc k n   |]
 
+instance VU.IsoUnbox CountW (Double,Double) where
+  toURepr (CountW w w2) = (w,w2)
+  fromURepr (w,w2) = CountW w w2
+  {-# INLINE toURepr   #-}
+  {-# INLINE fromURepr #-}
+newtype instance VU.MVector s CountW = MV_CountW (VU.MVector s (Double,Double))
+newtype instance VU.Vector    CountW = V_CountW  (VU.Vector    (Double,Double))
+deriving via (CountW `VU.As` (Double,Double)) instance VGM.MVector VU.MVector CountW
+deriving via (CountW `VU.As` (Double,Double)) instance VG.Vector   VU.Vector  CountW
+instance VU.Unbox CountW
 
 -- $references
 --
