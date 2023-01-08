@@ -505,25 +505,44 @@ derivingUnbox "BinomAcc"
   [| \(k,n) -> BinomAcc k n   |]
 
 
-instance CBOR.Serialise KBNSum where
-  encode (KBNSum a b) = CBOR.encodeListLen 2
-                     <> CBOR.encode a
-                     <> CBOR.encode b
-  decode = do n <- CBOR.decodeListLen
-              when (n /= 2) $ fail "KBNSum: expecting list of length 2"
-              KBNSum <$> CBOR.decode <*> CBOR.decode
+encodeKBN :: KBNSum -> CBOR.Encoding
+encodeKBN (KBNSum a b) = CBOR.encodeListLen 2
+                      <> CBOR.encode a
+                      <> CBOR.encode b
+
+decodeKBN :: CBOR.Decoder s KBNSum
+decodeKBN = do n <- CBOR.decodeListLen
+               when (n /= 2) $ fail "KBNSum: expecting list of length 2"
+               KBNSum <$> CBOR.decode <*> CBOR.decode
 
 deriving newtype  instance CBOR.Serialise a => CBOR.Serialise (CountG a)
 deriving anyclass instance CBOR.Serialise MeanNaive
-deriving anyclass instance CBOR.Serialise MeanKBN
 deriving anyclass instance CBOR.Serialise WMeanNaive
-deriving anyclass instance CBOR.Serialise WMeanKBN
 deriving anyclass instance CBOR.Serialise Variance
 deriving newtype  instance CBOR.Serialise a => CBOR.Serialise (Max a)
 deriving newtype  instance CBOR.Serialise a => CBOR.Serialise (Min a)
 deriving newtype  instance CBOR.Serialise MaxD
 deriving newtype  instance CBOR.Serialise MinD
 deriving anyclass instance CBOR.Serialise BinomAcc
+
+instance CBOR.Serialise MeanKBN where
+  encode (MeanKBN c s) = CBOR.encodeListLen 3
+                      <> CBOR.encodeWord 0
+                      <> CBOR.encode c
+                      <> encodeKBN s
+  decode = do n <- CBOR.decodeListLen
+              when (n /= 3) $ fail "MeanKBN: expecting list of length 3"
+              MeanKBN <$> CBOR.decode <*> decodeKBN
+
+instance CBOR.Serialise WMeanKBN where 
+  encode (WMeanKBN c s) = CBOR.encodeListLen 3
+                       <> CBOR.encodeWord 0
+                       <> encodeKBN c
+                       <> encodeKBN s
+  decode = do n <- CBOR.decodeListLen
+              when (n /= 3) $ fail "MeanKBN: expecting list of length 3"
+              WMeanKBN <$> decodeKBN <*> decodeKBN
+ 
 
 
 -- $references
