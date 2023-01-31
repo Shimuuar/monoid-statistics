@@ -65,6 +65,7 @@ import Data.Vector.Unboxed          qualified as VU
 import Data.Vector.Generic          qualified as VG
 import Data.Vector.Generic.Mutable  qualified as VGM
 import Data.Vector.Unboxed.Deriving (derivingUnbox)
+import Foreign.Storable             (Storable)
 import Numeric.Sum
 import GHC.Generics                 (Generic)
 
@@ -78,6 +79,7 @@ import Data.Monoid.Statistics.Class
 -- | Calculate number of elements in the sample.
 newtype CountG a = CountG { calcCountN :: a }
   deriving stock   (Show,Eq,Ord,Data)
+  deriving newtype (Storable)
 
 type Count = CountG Int
 
