@@ -77,7 +77,7 @@ import Data.Monoid.Statistics.Class
 
 -- | Calculate number of elements in the sample.
 newtype CountG a = CountG { calcCountN :: a }
-                  deriving (Show,Eq,Ord,Typeable)
+  deriving stock   (Show,Eq,Ord,Data)
 
 type Count = CountG Int
 
@@ -161,7 +161,7 @@ asWMean = id
 --   numbers loses precision and genrally use 'MeanKBN' is
 --   recommended.
 data MeanNaive = MeanNaive !Int !Double
-             deriving (Show,Eq,Typeable,Data,Generic)
+  deriving stock (Show,Eq,Data,Generic)
 
 asMeanNaive :: MeanNaive -> MeanNaive
 asMeanNaive = id
@@ -195,7 +195,7 @@ instance CalcMean MeanNaive where
 --   doing more operations. This means that it's usually possible to
 --   compute sum (and therefore mean) within 1 ulp.
 data MeanKBN = MeanKBN !Int {-# UNPACK #-} !KBNSum
-             deriving (Show,Eq,Typeable,Data,Generic)
+  deriving stock (Show,Eq,Data,Generic)
 
 asMeanKBN :: MeanKBN -> MeanKBN
 asMeanKBN = id
@@ -227,7 +227,7 @@ instance CalcMean MeanKBN where
 data WMeanNaive = WMeanNaive
   !Double  -- Weight
   !Double  -- Weighted sum
-  deriving (Show,Eq,Typeable,Data,Generic)
+  deriving stock (Show,Eq,Data,Generic)
 
 asWMeanNaive :: WMeanNaive -> WMeanNaive
 asWMeanNaive = id
@@ -260,7 +260,7 @@ instance CalcMean WMeanNaive where
 data WMeanKBN = WMeanKBN
   {-# UNPACK #-} !KBNSum  -- Weight
   {-# UNPACK #-} !KBNSum  -- Weighted sum
-  deriving (Show,Eq,Typeable,Data,Generic)
+  deriving stock (Show,Eq,Data,Generic)
 
 asWMeanKBN :: WMeanKBN -> WMeanKBN
 asWMeanKBN = id
@@ -305,7 +305,7 @@ asVarWelfordKBN = id
 data Variance = Variance {-# UNPACK #-} !Int    --  Number of elements in the sample
                          {-# UNPACK #-} !Double -- Current sum of elements of sample
                          {-# UNPACK #-} !Double -- Current sum of squares of deviations from current mean
-                deriving (Show,Eq,Typeable)
+  deriving stock (Show,Eq,Typeable)
 
 -- | Type restricted 'id '
 asVariance :: Variance -> Variance
@@ -361,7 +361,7 @@ instance CalcVariance Variance where
 
 -- | Calculate minimum of sample
 newtype Min a = Min { calcMin :: Maybe a }
-              deriving (Show,Eq,Ord,Typeable,Data,Generic)
+  deriving stock (Show,Eq,Ord,Data,Generic)
 
 instance Ord a => Semigroup (Min a) where
   Min (Just a) <> Min (Just b) = Min (Just $! min a b)
@@ -380,7 +380,7 @@ instance (Ord a, a ~ a') => StatMonoid (Min a) a' where
 
 -- | Calculate maximum of sample
 newtype Max a = Max { calcMax :: Maybe a }
-              deriving (Show,Eq,Ord,Typeable,Data,Generic)
+  deriving stock (Show,Eq,Ord,Data,Generic)
 
 instance Ord a => Semigroup (Max a) where
   Max (Just a) <> Max (Just b) = Max (Just $! max a b)
@@ -400,7 +400,7 @@ instance (Ord a, a ~ a') => StatMonoid (Max a) a' where
 -- | Calculate minimum of sample of Doubles. For empty sample returns NaN. Any
 --   NaN encountered will be ignored.
 newtype MinD = MinD { calcMinD :: Double }
-              deriving (Show,Typeable,Data,Generic)
+  deriving stock (Show,Data,Generic)
 
 instance Eq MinD where
   MinD a == MinD b
@@ -426,7 +426,7 @@ instance a ~ Double => StatMonoid MinD a where
 -- | Calculate maximum of sample. For empty sample returns NaN. Any
 --   NaN encountered will be ignored.
 newtype MaxD = MaxD { calcMaxD :: Double }
-              deriving (Show,Typeable,Data,Generic)
+  deriving stock (Show,Data,Generic)
 
 instance Eq MaxD where
   MaxD a == MaxD b
@@ -453,7 +453,7 @@ instance a ~ Double => StatMonoid MaxD a where
 data BinomAcc = BinomAcc { binomAccSuccess :: !Int
                          , binomAccTotal   :: !Int
                          }
-  deriving (Show,Eq,Ord,Typeable,Data,Generic)
+  deriving stock (Show,Eq,Ord,Data,Generic)
 
 -- | Type restricted 'id'
 asBinomAcc :: BinomAcc -> BinomAcc
@@ -473,7 +473,7 @@ instance StatMonoid BinomAcc Bool where
 
 -- | Value @a@ weighted by weight @w@
 data Weighted w a = Weighted w a
-              deriving (Show,Eq,Ord,Typeable,Data,Generic,Functor,Foldable,Traversable)
+  deriving stock (Show,Eq,Ord,Data,Generic,Functor,Foldable,Traversable)
 
 
 
