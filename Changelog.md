@@ -1,3 +1,11 @@
+# Changes in 1.1.3
+
+- `Data` and `Storable` instances for `CountG`.
+
+- `CalcNEvt` type class added and `CountW` accumulator for counting weighted
+  events.
+
+
 # Changes in 1.1.2
 
 - `Unbox` instances for `MeanNaive`, `WMeanNaive`, `WMeanKBN`.
