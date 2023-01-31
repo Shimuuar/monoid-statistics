@@ -9,7 +9,6 @@
 {-# LANGUAGE FlexibleContexts           #-}
 {-# LANGUAGE FlexibleInstances          #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
-{-# LANGUAGE ImportQualifiedPost        #-}
 {-# LANGUAGE MultiParamTypeClasses      #-}
 {-# LANGUAGE ScopedTypeVariables        #-}
 {-# LANGUAGE StandaloneDeriving         #-}
@@ -61,10 +60,10 @@ module Data.Monoid.Statistics.Numeric (
 import Control.Monad.Catch          (MonadThrow(..))
 import Data.Data                    (Typeable,Data)
 import Data.Vector.Unboxed          (Unbox)
-import Data.Vector.Unboxed          qualified as VU
-import Data.Vector.Generic          qualified as VG
-import Data.Vector.Generic.Mutable  qualified as VGM
 import Data.Vector.Unboxed.Deriving (derivingUnbox)
+import qualified Data.Vector.Unboxed          as VU
+import qualified Data.Vector.Generic          as VG
+import qualified Data.Vector.Generic.Mutable  as VGM
 import Foreign.Storable             (Storable)
 import Numeric.Sum
 import GHC.Generics                 (Generic)
