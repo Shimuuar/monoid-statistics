@@ -1,3 +1,8 @@
+# Changes in 1.1.4
+
+- Actually export `CountW`
+
+
 # Changes in 1.1.3
 
 - `Data` and `Storable` instances for `CountG`.

@@ -24,6 +24,7 @@ module Data.Monoid.Statistics.Numeric (
     CountG(..)
   , Count
   , asCount
+  , CountW(..)
     -- ** Mean algorithms
     -- ** Default algorithms
   , Mean
