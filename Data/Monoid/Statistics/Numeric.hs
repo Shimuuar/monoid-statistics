@@ -1,15 +1,21 @@
-{-# LANGUAGE BangPatterns          #-}
-{-# LANGUAGE DeriveDataTypeable    #-}
-{-# LANGUAGE DeriveFoldable        #-}
-{-# LANGUAGE DeriveGeneric         #-}
-{-# LANGUAGE DeriveTraversable     #-}
-{-# LANGUAGE FlexibleContexts      #-}
-{-# LANGUAGE FlexibleInstances     #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE ScopedTypeVariables   #-}
-{-# LANGUAGE TemplateHaskell       #-}
-{-# LANGUAGE TypeFamilies          #-}
-{-# LANGUAGE ViewPatterns          #-}
+{-# LANGUAGE BangPatterns               #-}
+{-# LANGUAGE DeriveAnyClass             #-}
+{-# LANGUAGE DeriveDataTypeable         #-}
+{-# LANGUAGE DeriveFoldable             #-}
+{-# LANGUAGE DeriveGeneric              #-}
+{-# LANGUAGE DeriveTraversable          #-}
+{-# LANGUAGE DerivingStrategies         #-}
+{-# LANGUAGE DerivingVia                #-}
+{-# LANGUAGE FlexibleContexts           #-}
+{-# LANGUAGE FlexibleInstances          #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE MultiParamTypeClasses      #-}
+{-# LANGUAGE ScopedTypeVariables        #-}
+{-# LANGUAGE StandaloneDeriving         #-}
+{-# LANGUAGE TemplateHaskell            #-}
+{-# LANGUAGE TypeFamilies               #-}
+{-# LANGUAGE TypeOperators              #-}
+{-# LANGUAGE ViewPatterns               #-}
 -- |
 -- Monoids for calculating various statistics in constant space
 module Data.Monoid.Statistics.Numeric (
@@ -55,6 +61,10 @@ import Control.Monad.Catch          (MonadThrow(..))
 import Data.Data                    (Typeable,Data)
 import Data.Vector.Unboxed          (Unbox)
 import Data.Vector.Unboxed.Deriving (derivingUnbox)
+import qualified Data.Vector.Unboxed          as VU
+import qualified Data.Vector.Generic          as VG
+import qualified Data.Vector.Generic.Mutable  as VGM
+import Foreign.Storable             (Storable)
 import Numeric.Sum
 import GHC.Generics                 (Generic)
 
@@ -67,7 +77,8 @@ import Data.Monoid.Statistics.Class
 
 -- | Calculate number of elements in the sample.
 newtype CountG a = CountG { calcCountN :: a }
-                  deriving (Show,Eq,Ord,Typeable)
+  deriving stock   (Show,Eq,Ord,Data)
+  deriving newtype (Storable)
 
 type Count = CountG Int
 
@@ -90,7 +101,42 @@ instance (Integral a) => StatMonoid (CountG a) b where
 instance CalcCount (CountG Int) where
   calcCount = calcCountN
 
+instance Real a => CalcNEvt (CountG a) where
+  calcEvtsW    = realToFrac . calcCountN
+  calcEvtsWErr = sqrt . calcEvtsW
+  {-# INLINE calcEvtsW    #-}
+  {-# INLINE calcEvtsWErr #-}
 
+----------------------------------------------------------------
+
+-- | Accumulator type for counting weighted events. Weights are
+--   presumed to be independent and follow same distribution \[W\].
+--   In this case sum of weights follows compound Poisson
+--   distribution. Its expectation could be then estimated as
+--   \[\sum_iw_i\] and variance as \[\sum_iw_i^2\].
+--
+--   Main use of this data type is as accumulator in histograms which
+--   count weighted events.
+data CountW = CountW
+  !Double -- Sum of weights
+  !Double -- Sum of weight squares
+  deriving stock (Show,Eq,Generic)
+
+instance Semigroup CountW where
+  CountW wA w2A <> CountW wB w2B = CountW (wA+wB) (w2A+w2B)
+  {-# INLINE (<>) #-}
+instance Monoid CountW where
+  mempty = CountW 0 0
+
+instance Real a => StatMonoid CountW a where
+  addValue (CountW w w2) a = CountW (w + x) (w2 + x*x)
+    where
+      x = realToFrac a
+
+instance CalcNEvt CountW where
+  calcEvtsW    (CountW w _ ) = w
+  calcEvtsWErr (CountW _ w2) = sqrt w2
+  calcEffNEvt  (CountW w w2) = w * w / w2
 
 ----------------------------------------------------------------
 
@@ -116,7 +162,7 @@ asWMean = id
 --   numbers loses precision and genrally use 'MeanKBN' is
 --   recommended.
 data MeanNaive = MeanNaive !Int !Double
-             deriving (Show,Eq,Typeable,Data,Generic)
+  deriving stock (Show,Eq,Data,Generic)
 
 asMeanNaive :: MeanNaive -> MeanNaive
 asMeanNaive = id
@@ -150,7 +196,7 @@ instance CalcMean MeanNaive where
 --   doing more operations. This means that it's usually possible to
 --   compute sum (and therefore mean) within 1 ulp.
 data MeanKBN = MeanKBN !Int {-# UNPACK #-} !KBNSum
-             deriving (Show,Eq,Typeable,Data,Generic)
+  deriving stock (Show,Eq,Data,Generic)
 
 asMeanKBN :: MeanKBN -> MeanKBN
 asMeanKBN = id
@@ -182,7 +228,7 @@ instance CalcMean MeanKBN where
 data WMeanNaive = WMeanNaive
   !Double  -- Weight
   !Double  -- Weighted sum
-  deriving (Show,Eq,Typeable,Data,Generic)
+  deriving stock (Show,Eq,Data,Generic)
 
 asWMeanNaive :: WMeanNaive -> WMeanNaive
 asWMeanNaive = id
@@ -215,7 +261,7 @@ instance CalcMean WMeanNaive where
 data WMeanKBN = WMeanKBN
   {-# UNPACK #-} !KBNSum  -- Weight
   {-# UNPACK #-} !KBNSum  -- Weighted sum
-  deriving (Show,Eq,Typeable,Data,Generic)
+  deriving stock (Show,Eq,Data,Generic)
 
 asWMeanKBN :: WMeanKBN -> WMeanKBN
 asWMeanKBN = id
@@ -260,7 +306,7 @@ asVarWelfordKBN = id
 data Variance = Variance {-# UNPACK #-} !Int    --  Number of elements in the sample
                          {-# UNPACK #-} !Double -- Current sum of elements of sample
                          {-# UNPACK #-} !Double -- Current sum of squares of deviations from current mean
-                deriving (Show,Eq,Typeable)
+  deriving stock (Show,Eq,Typeable)
 
 -- | Type restricted 'id '
 asVariance :: Variance -> Variance
@@ -316,7 +362,7 @@ instance CalcVariance Variance where
 
 -- | Calculate minimum of sample
 newtype Min a = Min { calcMin :: Maybe a }
-              deriving (Show,Eq,Ord,Typeable,Data,Generic)
+  deriving stock (Show,Eq,Ord,Data,Generic)
 
 instance Ord a => Semigroup (Min a) where
   Min (Just a) <> Min (Just b) = Min (Just $! min a b)
@@ -335,7 +381,7 @@ instance (Ord a, a ~ a') => StatMonoid (Min a) a' where
 
 -- | Calculate maximum of sample
 newtype Max a = Max { calcMax :: Maybe a }
-              deriving (Show,Eq,Ord,Typeable,Data,Generic)
+  deriving stock (Show,Eq,Ord,Data,Generic)
 
 instance Ord a => Semigroup (Max a) where
   Max (Just a) <> Max (Just b) = Max (Just $! max a b)
@@ -355,7 +401,7 @@ instance (Ord a, a ~ a') => StatMonoid (Max a) a' where
 -- | Calculate minimum of sample of Doubles. For empty sample returns NaN. Any
 --   NaN encountered will be ignored.
 newtype MinD = MinD { calcMinD :: Double }
-              deriving (Show,Typeable,Data,Generic)
+  deriving stock (Show,Data,Generic)
 
 instance Eq MinD where
   MinD a == MinD b
@@ -381,7 +427,7 @@ instance a ~ Double => StatMonoid MinD a where
 -- | Calculate maximum of sample. For empty sample returns NaN. Any
 --   NaN encountered will be ignored.
 newtype MaxD = MaxD { calcMaxD :: Double }
-              deriving (Show,Typeable,Data,Generic)
+  deriving stock (Show,Data,Generic)
 
 instance Eq MaxD where
   MaxD a == MaxD b
@@ -408,7 +454,7 @@ instance a ~ Double => StatMonoid MaxD a where
 data BinomAcc = BinomAcc { binomAccSuccess :: !Int
                          , binomAccTotal   :: !Int
                          }
-  deriving (Show,Eq,Ord,Typeable,Data,Generic)
+  deriving stock (Show,Eq,Ord,Data,Generic)
 
 -- | Type restricted 'id'
 asBinomAcc :: BinomAcc -> BinomAcc
@@ -428,7 +474,7 @@ instance StatMonoid BinomAcc Bool where
 
 -- | Value @a@ weighted by weight @w@
 data Weighted w a = Weighted w a
-              deriving (Show,Eq,Ord,Typeable,Data,Generic,Functor,Foldable,Traversable)
+  deriving stock (Show,Eq,Ord,Data,Generic,Functor,Foldable,Traversable)
 
 
 
@@ -495,6 +541,16 @@ derivingUnbox "BinomAcc"
   [| \(BinomAcc k n) -> (k,n) |]
   [| \(k,n) -> BinomAcc k n   |]
 
+instance VU.IsoUnbox CountW (Double,Double) where
+  toURepr (CountW w w2) = (w,w2)
+  fromURepr (w,w2) = CountW w w2
+  {-# INLINE toURepr   #-}
+  {-# INLINE fromURepr #-}
+newtype instance VU.MVector s CountW = MV_CountW (VU.MVector s (Double,Double))
+newtype instance VU.Vector    CountW = V_CountW  (VU.Vector    (Double,Double))
+deriving via (CountW `VU.As` (Double,Double)) instance VGM.MVector VU.MVector CountW
+deriving via (CountW `VU.As` (Double,Double)) instance VG.Vector   VU.Vector  CountW
+instance VU.Unbox CountW
 
 -- $references
 --

@@ -27,10 +27,12 @@ module Data.Monoid.Statistics.Class
     -- * Ad-hoc type classes for select statistics
     -- $adhoc
   , CalcCount(..)
+  , CalcNEvt(..)
   , CalcMean(..)
   , HasMean(..)
   , CalcVariance(..)
   , HasVariance(..)
+    -- ** Deriving via
   , CalcViaHas(..)
     -- * Exception handling
   , Partial(..)
@@ -44,6 +46,8 @@ import           Control.Exception
 import           Control.Monad.Catch (MonadThrow(..))
 import           Data.Data           (Typeable,Data)
 import           Data.Monoid
+import           Data.Int
+import           Data.Word
 import           Data.Vector.Unboxed          (Unbox)
 import           Data.Vector.Unboxed.Deriving (derivingUnbox)
 import qualified Data.Foldable       as F
@@ -285,8 +289,50 @@ class CalcVariance a => HasVariance a where
   {-# MINIMAL (getVariance,getVarianceML) | (getStddev,getStddevML) #-}
 
 
+-- | Type class for accumulators that are used for event counting with
+--   possibly weighted events. Those are mostly used as accumulators
+--   in histograms.
+class CalcNEvt a where
+  -- | Calculate sum of events weights.
+  calcEvtsW :: a -> Double
+  -- | Calculate error estimate (1σ or 68% CL). All instances defined
+  --   in library use normal approximation which breaks down for small
+  --   number of events.
+  calcEvtsWErr :: a -> Double
+  -- | Calculate effective number of events which is defined as
+  --   \[N=E(w)^2/\operatorname{Var}(w)\] or as number of events
+  --   which will yield same estimate for mean variance is they all
+  --   have same weight.
+  calcEffNEvt :: a -> Double
+  calcEffNEvt = calcEvtsW
+
+instance CalcNEvt Int where
+  calcEvtsW    = fromIntegral
+  calcEvtsWErr = sqrt . calcEvtsW
+
+instance CalcNEvt Int32 where
+  calcEvtsW    = fromIntegral
+  calcEvtsWErr = sqrt . calcEvtsW
+
+instance CalcNEvt Int64 where
+  calcEvtsW    = fromIntegral
+  calcEvtsWErr = sqrt . calcEvtsW
+
+instance CalcNEvt Word where
+  calcEvtsW    = fromIntegral
+  calcEvtsWErr = sqrt . calcEvtsW
+
+instance CalcNEvt Word32 where
+  calcEvtsW    = fromIntegral
+  calcEvtsWErr = sqrt . calcEvtsW
+
+instance CalcNEvt Word64 where
+  calcEvtsW    = fromIntegral
+  calcEvtsWErr = sqrt . calcEvtsW
 
 
+-- | Derive instances for 'CalcMean' and 'CalcVariance' from 'HasMean'
+--   and 'HasVariance' instances.
 newtype CalcViaHas a = CalcViaHas a
   deriving newtype (HasMean, HasVariance)
 
