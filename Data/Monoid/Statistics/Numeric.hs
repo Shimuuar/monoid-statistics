@@ -59,6 +59,7 @@ module Data.Monoid.Statistics.Numeric (
   ) where
 
 import Control.Monad.Catch          (MonadThrow(..))
+import Data.Bifunctor
 import Data.Data                    (Typeable,Data)
 import Data.Vector.Unboxed          (Unbox)
 import Data.Vector.Unboxed.Deriving (derivingUnbox)
@@ -477,6 +478,13 @@ instance StatMonoid BinomAcc Bool where
 data Weighted w a = Weighted w a
   deriving stock (Show,Eq,Ord,Data,Generic,Functor,Foldable,Traversable)
 
+instance Bifunctor Weighted where
+  first  f   (Weighted w a) = Weighted (f w) a
+  second f   (Weighted w a) = Weighted w (f a)
+  bimap  f g (Weighted w a) =Weighted (f w) (g a)
+  {-# INLINE first  #-}
+  {-# INLINE second #-}
+  {-# INLINE bimap  #-}
 
 
 ----------------------------------------------------------------
