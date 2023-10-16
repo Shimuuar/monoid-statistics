@@ -1,3 +1,8 @@
+# Changes in 1.1.5
+
+- Bifunctor instance is added to `Weighted`
+
+
 # Changes in 1.1.4
 
 - Actually export `CountW`
